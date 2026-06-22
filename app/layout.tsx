@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "关键词词频统计",
-  description: "拆分英文关键词组，统计每个词根的出现次数与占比。",
+  title: "亚马逊关键词工具箱",
+  description: "统计英文关键词词频，自动识别词根并生成无冲突的组合关键词。",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

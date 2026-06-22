@@ -1,4 +1,5 @@
 import type { WordFrequencyGroup, WordFrequencySummary } from "./wordFrequency";
+import { copyTextToClipboard } from "./clipboard";
 
 const formatPercentage = (percentage: number) => `${(percentage * 100).toFixed(2)}%`;
 
@@ -47,26 +48,7 @@ export function generateCsv(summary: WordFrequencySummary): string {
 }
 
 export async function copyRowsToClipboard(summary: WordFrequencySummary): Promise<void> {
-  const content = generateTsv(summary);
-
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(content);
-    return;
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = content;
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-
-  const copied = document.execCommand("copy");
-  textarea.remove();
-
-  if (!copied) {
-    throw new Error("复制失败");
-  }
+  await copyTextToClipboard(generateTsv(summary));
 }
 
 export function downloadCsv(summary: WordFrequencySummary): void {
