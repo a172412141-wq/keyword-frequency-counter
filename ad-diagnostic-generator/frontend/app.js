@@ -2,6 +2,7 @@ const state = {
   file: null,
   fields: [],
   values: [],
+  selectedValues: new Set(),
   downloadBlob: null,
   downloadName: "广告诊断表.xlsx",
 };
@@ -23,6 +24,8 @@ const elements = {
   valueSelect: $("value-select"),
   valueSearch: $("value-search"),
   valueCount: $("value-count"),
+  selectVisible: $("select-visible"),
+  clearSelection: $("clear-selection"),
   generateButton: $("generate-button"),
   loadingOverlay: $("loading-overlay"),
   loadingCopy: $("loading-copy"),
@@ -115,6 +118,7 @@ function resetAll() {
   state.file = null;
   state.fields = [];
   state.values = [];
+  state.selectedValues.clear();
   state.downloadBlob = null;
   elements.fileInput.value = "";
   elements.dropZone.hidden = false;
@@ -129,22 +133,47 @@ function resetAll() {
   window.scrollTo({ top: document.querySelector(".workspace").offsetTop - 24, behavior: "smooth" });
 }
 
-function renderValues(query = "") {
+function renderValues(query = "", selectDefault = true) {
   const normalized = query.trim().toLocaleLowerCase();
   const filtered = normalized
     ? state.values.filter((value) => value.toLocaleLowerCase().includes(normalized))
     : state.values;
-  elements.valueSelect.replaceChildren(
-    ...filtered.slice(0, 5000).map((value) => new Option(value, value)),
-  );
-  if (elements.valueSelect.options.length) elements.valueSelect.selectedIndex = 0;
+  const options = filtered.slice(0, 5000).map((value) => {
+    const option = new Option(value, value);
+    option.selected = state.selectedValues.has(value);
+    return option;
+  });
+  elements.valueSelect.replaceChildren(...options);
+  if (selectDefault && !state.selectedValues.size && options.length) {
+    options[0].selected = true;
+    state.selectedValues.add(options[0].value);
+  }
   const suffix = filtered.length > 5000 ? "，显示前 5,000 个" : "";
-  elements.valueCount.textContent = `匹配 ${filtered.length.toLocaleString()} 个值${suffix}`;
+  elements.valueCount.textContent = `已选 ${state.selectedValues.size.toLocaleString()} 个 · 匹配 ${filtered.length.toLocaleString()} 个值${suffix}`;
+}
+
+function selectVisibleValues() {
+  Array.from(elements.valueSelect.options).forEach((option) => state.selectedValues.add(option.value));
+  renderValues(elements.valueSearch.value, false);
+}
+
+function clearSelectedValues() {
+  state.selectedValues.clear();
+  renderValues(elements.valueSearch.value, false);
+}
+
+function syncSelectedValues() {
+  Array.from(elements.valueSelect.options).forEach((option) => {
+    if (option.selected) state.selectedValues.add(option.value);
+    else state.selectedValues.delete(option.value);
+  });
+  renderValues(elements.valueSearch.value);
 }
 
 function selectField(fieldName) {
   const field = state.fields.find((item) => item.name === fieldName);
   state.values = field ? field.values : [];
+  state.selectedValues.clear();
   elements.valueSearch.value = "";
   renderValues();
 }
@@ -199,17 +228,17 @@ function triggerDownload() {
 
 async function generateWorkbook() {
   const selectedField = elements.fieldSelect.value;
-  const selectedValue = elements.valueSelect.value;
-  if (!selectedValue) {
-    showError("请先选择一个父体或产品组。 ");
+  const selectedValues = Array.from(state.selectedValues);
+  if (!selectedValues.length) {
+    showError("请至少选择一个父体或产品组。 ");
     return;
   }
   clearError();
-  showLoading("正在重建公式并生成 12-Sheet 工作簿…");
+  showLoading("正在合并所选数据并生成 8-Sheet 工作簿…");
   const formData = new FormData();
   formData.append("file", state.file);
   formData.append("selected_field", selectedField);
-  formData.append("selected_value", selectedValue);
+  selectedValues.forEach((value) => formData.append("selected_values", value));
   try {
     const response = await fetch("/api/generate", { method: "POST", body: formData });
     if (!response.ok) throw new Error(await apiError(response));
@@ -227,9 +256,9 @@ async function generateWorkbook() {
           `广告位 ${stats.bidding_rows.toLocaleString()}`,
           `搜索词 ${stats.search_terms.toLocaleString()}`,
           `广告组合 ${stats.portfolios.toLocaleString()}`,
-          `ASIN-SKU ${stats.asin_sku_pairs.toLocaleString()}`,
+          `已选 ${stats.selected_values.length.toLocaleString()} 项`,
         ]
-      : ["12 个工作表"];
+      : ["8 个工作表"];
     elements.resultStats.replaceChildren(...items.map((item) => {
       const span = document.createElement("span");
       span.textContent = item;
@@ -250,6 +279,9 @@ elements.sampleButton.addEventListener("click", loadSample);
 elements.analyzeButton.addEventListener("click", analyzeFile);
 elements.fieldSelect.addEventListener("change", () => selectField(elements.fieldSelect.value));
 elements.valueSearch.addEventListener("input", () => renderValues(elements.valueSearch.value));
+elements.valueSelect.addEventListener("change", syncSelectedValues);
+elements.selectVisible.addEventListener("click", selectVisibleValues);
+elements.clearSelection.addEventListener("click", clearSelectedValues);
 elements.generateButton.addEventListener("click", generateWorkbook);
 elements.downloadAgain.addEventListener("click", triggerDownload);
 elements.startOver.addEventListener("click", resetAll);

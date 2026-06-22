@@ -107,18 +107,21 @@ async def analyze(file: UploadFile = File(...)) -> dict[str, object]:
 async def generate(
     file: UploadFile = File(...),
     selected_field: str = Form(...),
-    selected_value: str = Form(...),
+    selected_values: list[str] | None = Form(None),
+    selected_value: str | None = Form(None),
 ) -> StreamingResponse:
     payload = await read_upload(file)
     try:
         bulk = read_bulk_input(payload)
-        workbook_bytes, stats = generate_diagnostic_workbook(bulk, selected_field, selected_value)
+        values = selected_values or ([selected_value] if selected_value else [])
+        workbook_bytes, stats = generate_diagnostic_workbook(bulk, selected_field, values)
     except InputValidationError:
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"生成 Excel 失败：{exc}") from exc
 
-    filename = safe_filename(selected_value)
+    filename_label = values[0] if len(values) == 1 else f"{values[0]}_等{len(values)}项"
+    filename = safe_filename(filename_label)
     encoded_filename = quote(filename)
     stats_json = json.dumps(stats.__dict__, ensure_ascii=True, separators=(",", ":"))
     return StreamingResponse(

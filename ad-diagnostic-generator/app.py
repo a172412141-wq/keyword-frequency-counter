@@ -32,7 +32,7 @@ st.markdown(
     <section class="hero">
       <div class="hero-kicker">AMAZON ADS · BULK DIAGNOSTICS</div>
       <h1>广告诊断表生成器</h1>
-      <p>上传 Amazon Ads Bulk，选择 ASIN、SKU 或广告活动，即可生成保留模板样式、公式、筛选和图表的 12-Sheet 诊断工作簿。</p>
+      <p>上传 Amazon Ads Bulk，多选 ASIN、SKU 或广告活动，即可生成保留模板样式、公式、筛选和图表的 8-Sheet 诊断工作簿。</p>
     </section>
     <div class="privacy">🔒 文件只在当前应用会话中处理，不会写入数据库。建议部署在你自己的 Streamlit Cloud 或本机。</div>
     """,
@@ -83,25 +83,30 @@ selected_field = st.selectbox(
     available_fields,
     format_func=lambda value: f"{field_labels.get(value, value)} · {len(options[value])} 个值",
 )
-selected_value = st.selectbox("3. 选择要生成诊断表的父体 / 产品组", options[selected_field])
+selected_values = st.multiselect(
+    "3. 选择要合并生成诊断表的父体 / 产品组",
+    options[selected_field],
+    default=options[selected_field][:1],
+)
 
-st.caption("Campaign / Ad Group 使用包含匹配；ASIN / SKU 使用精确匹配。NicheWord 与 NicheAsin 因 Bulk 不含 ABA 数据，将保留空模板。")
+st.caption("支持多选；Campaign / Ad Group 使用包含匹配，ASIN / SKU 使用精确匹配。")
 
 if st.button("生成广告诊断表", type="primary", use_container_width=True):
     try:
         with st.spinner("正在筛选数据、重建公式并打包 Excel…"):
-            output, stats = generate_diagnostic_workbook(bulk, selected_field, selected_value)
+            output, stats = generate_diagnostic_workbook(bulk, selected_field, selected_values)
         st.success("诊断表已生成。")
-        cols = st.columns(5)
+        cols = st.columns(4)
         cols[0].metric("筛选行", f"{stats.filtered_rows:,}")
         cols[1].metric("广告位行", f"{stats.bidding_rows:,}")
         cols[2].metric("搜索词", f"{stats.search_terms:,}")
         cols[3].metric("广告组合", f"{stats.portfolios:,}")
-        cols[4].metric("ASIN-SKU", f"{stats.asin_sku_pairs:,}")
         st.download_button(
             "下载生成的 Excel",
             data=output,
-            file_name=safe_filename(selected_value),
+            file_name=safe_filename(
+                selected_values[0] if len(selected_values) == 1 else f"{selected_values[0]}_等{len(selected_values)}项"
+            ),
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             type="primary",
             use_container_width=True,
@@ -114,8 +119,7 @@ if st.button("生成广告诊断表", type="primary", use_container_width=True):
 with st.expander("生成内容与限制"):
     st.markdown(
         """
-        - 自动生成：Bulk、BidingAdjustment、广告位可视化、搜索词模板、两张词频分析、广告组合预算、LX_Asin。
-        - 保留结构：NicheWord、NicheAsin、否词库、H1F广告架构。
+        - 自动生成：广告组合预算、Bulk、BidingAdjustment、广告位可视化、搜索词模板、两张词频分析、否词库。
         - 标准 Bulk 包含 Portfolios 时，会自动填入预算类型、组合预算和起止日期；旧单表缺失时标记为 `N/A`。
         - Excel 公式设置为打开文件时自动重算；首次打开后请等待 Excel/WPS 完成计算。
         """

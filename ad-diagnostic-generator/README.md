@@ -7,8 +7,8 @@
 - 自动识别标准多工作表 Bulk 中的 `Sponsored Products Campaigns`、`SP Search Term Report` 和 `Portfolios`，同时兼容旧单表文件。
 - 兼容 Amazon 导出文件错误声明工作表尺寸为 `A1:A1` 的情况。
 - 在生成前校验核心指标、父体识别字段和搜索词来源字段，并按 Campaign / Ad Group 关联搜索词。
-- 按 ASIN / SKU 精确筛选，按 Campaign / Ad Group 包含筛选。
-- 生成 12 个模板 Sheet，并重建 Bulk、广告位、搜索词、词频、广告组合和 ASIN-SKU 数据。
+- 支持多选 ASIN / SKU 精确筛选，以及多选 Campaign / Ad Group 包含筛选。
+- 生成 8 个模板 Sheet，并重建 Bulk、广告位、搜索词、词频和广告组合数据。
 - 公式使用实际数据范围，避免模板中的超大整列引用。
 - 输出文件名：`广告诊断表_{父体}_{日期}.xlsx`。
 - 内置模板已移除真实广告数据和外部链接。
@@ -59,7 +59,7 @@ API 文档运行后可在 `http://127.0.0.1:8000/api/docs` 查看。
 
 - 文件在内存中处理，不写入数据库。
 - 标准 Bulk 包含 `Portfolios` 时会自动填入预算类型、组合预算和起止日期；缺失的单表文件标记为 `N/A`。
-- NicheWord / NicheAsin 需要 ABA 或 Opportunity Explorer 数据，仅凭 Bulk 无法生成，当前保留空模板结构。
+- 输出不包含 `LX_Asin`、`NicheWord`、`NicheAsin` 和 `H1F广告架构`。
 - 公式由 Excel/WPS 在首次打开时自动重算。
 
 ## 模板维护

@@ -85,9 +85,9 @@ def test_generates_filtered_template_workbook(sample_rows):
 
     assert workbook.sheetnames == [
         "广告组合预算", "Bulk", "BidingAdjustment", "广告位可视化", "搜索词模板",
-        "词频分析(全部搜索词）", "词频分析 (不出单搜素词)", "LX_Asin", "NicheWord",
-        "NicheAsin", "否词库", "H1F广告架构",
+        "词频分析(全部搜索词）", "词频分析 (不出单搜素词)", "否词库",
     ]
+    assert stats.selected_values == ("B0PARENTA1",)
     assert stats.filtered_rows == 2
     assert stats.bidding_rows == 1
     assert stats.search_terms == 1
@@ -102,8 +102,22 @@ def test_generates_filtered_template_workbook(sample_rows):
     assert workbook["搜索词模板"]["B4"].value == 1000
     assert workbook["搜索词模板"]["G4"].value == "=IFERROR(D4/C4,0)"
     assert workbook["词频分析(全部搜索词）"]["A2"].value in {"carry", "luggage", "on"}
-    assert workbook["LX_Asin"]["A2"].value == "B0PARENTA1"
     assert len(workbook["广告位可视化"]._charts) == 2
+
+
+def test_multiple_parent_values_are_combined(sample_rows):
+    bulk = read_bulk_input(workbook_bytes(sample_rows))
+    output, stats = generate_diagnostic_workbook(
+        bulk,
+        "ASIN (Informational only)",
+        ["B0PARENTA1", "B0OTHER001", "B0PARENTA1"],
+    )
+    workbook = load_workbook(io.BytesIO(output), data_only=False, keep_links=False)
+
+    assert stats.selected_values == ("B0PARENTA1", "B0OTHER001")
+    assert stats.filtered_rows == 3
+    assert stats.search_terms == 2
+    assert workbook["Bulk"]["W17"].value == "B0OTHER001"
 
 
 def test_campaign_filter_uses_contains_match(sample_rows):

@@ -41,6 +41,16 @@ def build_sample(output: Path = OUTPUT) -> Path:
             "Demo Carry-on Phrase", None, "Demo Portfolio", None, None, None, "Placement Product Page",
             None, None, 5200, 96, 81.3, 302.0, 4,
         ],
+        [
+            "Sponsored Products", "Keyword", "DEMO-2002", "DEMO-GROUP-2", "DEMO-PORT-1",
+            "Demo Checked Luggage", "Demo Group B", "Demo Portfolio", "DEMO-SKU-B", "B0DEMO0002",
+            "Exact", None, None, "checked luggage", 4200, 88, 72.4, 356.0, 5,
+        ],
+        [
+            "Sponsored Products", "Bidding Adjustment", "DEMO-2002", None, "DEMO-PORT-1",
+            "Demo Checked Luggage", None, "Demo Portfolio", None, None, None, "Placement Top",
+            None, None, 2500, 51, 43.2, 212.0, 3,
+        ],
     ]
     workbook = Workbook()
     sheet = workbook.active
@@ -60,6 +70,7 @@ def build_sample(output: Path = OUTPUT) -> Path:
     search.append(["Sponsored Products", "DEMO-1001", "DEMO-GROUP-1", "Demo Carry-on Phrase", "Demo Group A", "carry on luggage", 9000, 250, 210, 900, 13])
     search.append(["Sponsored Products", "DEMO-1001", "DEMO-GROUP-1", "Demo Carry-on Phrase", "Demo Group A", "lightweight suitcase", 5000, 100, 80, 300, 4])
     search.append(["Sponsored Products", "DEMO-1001", "DEMO-GROUP-1", "Demo Carry-on Phrase", "Demo Group A", "luggage with wheels", 2000, 40, 35, 0, 0])
+    search.append(["Sponsored Products", "DEMO-2002", "DEMO-GROUP-2", "Demo Checked Luggage", "Demo Group B", "checked luggage", 3500, 72, 61, 305, 4])
 
     portfolios = workbook.create_sheet("Portfolios")
     portfolios.append([

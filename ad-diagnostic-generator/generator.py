@@ -78,13 +78,15 @@ class BulkInput:
 @dataclass(frozen=True)
 class GenerationStats:
     selected_field: str
-    selected_value: str
+    selected_values: tuple[str, ...]
     input_rows: int
     filtered_rows: int
     bidding_rows: int
     search_terms: int
     portfolios: int
-    asin_sku_pairs: int
+
+
+REMOVED_OUTPUT_SHEETS = ("LX_Asin", "NicheWord", "NicheAsin", "H1F广告架构")
 
 
 def normalize_header(value: Any) -> str:
@@ -278,13 +280,32 @@ def parent_options(bulk: BulkInput) -> dict[str, list[str]]:
     return options
 
 
-def filter_parent_rows(rows: Sequence[Mapping[str, Any]], field: str, value: str) -> list[dict[str, Any]]:
-    wanted = value.casefold().strip()
+def _selection_values(values: str | Sequence[str]) -> tuple[str, ...]:
+    source = (values,) if isinstance(values, str) else values
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in source:
+        cleaned = _as_text(value)
+        key = cleaned.casefold()
+        if cleaned and key not in seen:
+            seen.add(key)
+            result.append(cleaned)
+    return tuple(result)
+
+
+def filter_parent_rows(
+    rows: Sequence[Mapping[str, Any]],
+    field: str,
+    values: str | Sequence[str],
+) -> list[dict[str, Any]]:
+    wanted_values = tuple(value.casefold() for value in _selection_values(values))
+    if not wanted_values:
+        return []
     fuzzy = field.startswith("Campaign Name") or field.startswith("Ad Group Name")
     directly_matched: list[dict[str, Any]] = []
     for row in rows:
         actual = _as_text(row.get(field)).casefold()
-        matched = wanted in actual if fuzzy else wanted == actual
+        matched = any(wanted in actual for wanted in wanted_values) if fuzzy else actual in wanted_values
         if matched:
             directly_matched.append(dict(row))
 
@@ -315,7 +336,7 @@ def filter_parent_rows(rows: Sequence[Mapping[str, Any]], field: str, value: str
     selected: list[dict[str, Any]] = []
     for row in rows:
         actual = _as_text(row.get(field)).casefold()
-        direct = wanted in actual if fuzzy else actual == wanted
+        direct = any(wanted in actual for wanted in wanted_values) if fuzzy else actual in wanted_values
         shares_relation = any(
             _as_text(row.get(relation_field)).casefold() in values
             for relation_field in match_fields
@@ -728,36 +749,18 @@ def _write_portfolios(
     return len(items)
 
 
-def _write_asin_sku(workbook, rows: Sequence[Mapping[str, Any]]) -> int:
-    sheet = workbook["LX_Asin"]
-    pairs = sorted(
-        {
-            (_as_text(row.get("ASIN (Informational only)")), _as_text(row.get("SKU")))
-            for row in rows
-            if _as_text(row.get("ASIN (Informational only)")) or _as_text(row.get("SKU"))
-        },
-        key=lambda pair: (pair[0].casefold(), pair[1].casefold()),
-    )
-    _clear_values(sheet, 2, max(sheet.max_row, len(pairs) + 1), 2)
-    for offset, (asin, sku) in enumerate(pairs):
-        row = 2 + offset
-        _copy_row_style(sheet, 2, row, 2)
-        sheet.cell(row, 1).value = asin
-        sheet.cell(row, 2).value = sku
-    sheet.auto_filter.ref = f"A1:B{max(2, len(pairs) + 1)}"
-    sheet.freeze_panes = "A2"
-    return len(pairs)
-
-
 def generate_diagnostic_workbook(
     bulk: BulkInput,
     selected_field: str,
-    selected_value: str,
+    selected_values: str | Sequence[str],
     template_path: str | Path = TEMPLATE_PATH,
 ) -> tuple[bytes, GenerationStats]:
     if selected_field not in PARENT_FIELDS:
         raise InputValidationError(f"不支持的父体筛选字段：{selected_field}")
-    filtered = filter_parent_rows(bulk.rows, selected_field, selected_value)
+    normalized_values = _selection_values(selected_values)
+    if not normalized_values:
+        raise InputValidationError("请至少选择一个父体或产品组。")
+    filtered = filter_parent_rows(bulk.rows, selected_field, normalized_values)
     if not filtered:
         raise InputValidationError("所选父体没有匹配到任何数据行，请更换筛选值。")
 
@@ -775,7 +778,9 @@ def generate_diagnostic_workbook(
     _write_word_frequency(workbook, aggregated, "词频分析(全部搜索词）", False)
     _write_word_frequency(workbook, aggregated, "词频分析 (不出单搜素词)", True)
     portfolio_count = _write_portfolios(workbook, filtered, bulk.portfolio_rows)
-    pair_count = _write_asin_sku(workbook, filtered)
+    for sheet_name in REMOVED_OUTPUT_SHEETS:
+        if sheet_name in workbook.sheetnames:
+            workbook.remove(workbook[sheet_name])
 
     workbook.calculation.fullCalcOnLoad = True
     workbook.calculation.forceFullCalc = True
@@ -784,11 +789,10 @@ def generate_diagnostic_workbook(
     workbook.save(output)
     return output.getvalue(), GenerationStats(
         selected_field=selected_field,
-        selected_value=selected_value,
+        selected_values=normalized_values,
         input_rows=len(bulk.rows),
         filtered_rows=len(filtered),
         bidding_rows=bidding_count,
         search_terms=search_term_count,
         portfolios=portfolio_count,
-        asin_sku_pairs=pair_count,
     )

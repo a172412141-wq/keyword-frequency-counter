@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0b1220" />
-    <meta name="description" content="上传 Amazon Ads Bulk，选择父体，生成 12 Sheet 广告诊断工作簿。" />
+    <meta name="description" content="上传 Amazon Ads Bulk，多选父体或产品组，生成 8 Sheet 广告诊断工作簿。" />
     <title>Amazon 广告诊断表生成器</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1220'/%3E%3Cpath d='M7 23V14m6 9V8m6 15V12m6 11V5M4 26h24' fill='none' stroke='%2312b886' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/static/styles.css" />
@@ -30,7 +30,7 @@
       <section class="hero">
         <div class="eyebrow"><span>01</span> BULK TO ACTION</div>
         <h1>把一张 Bulk，<br /><em>变成可执行的广告诊断。</em></h1>
-        <p>自动识别父体、聚合广告表现，并生成保留模板样式、公式、筛选和图表的 12-Sheet 工作簿。</p>
+        <p>自动识别并多选父体或产品组，聚合广告表现，生成保留模板样式、公式、筛选和图表的 8-Sheet 工作簿。</p>
         <div class="hero-meta" aria-label="工具能力">
           <span>无需整理表头</span><i></i><span>无需手填公式</span><i></i><span>本地可部署</span>
         </div>
@@ -97,18 +97,18 @@
             <label class="field-control">
               <span><b>02</b> 父体 / 产品组</span>
               <input id="value-search" type="search" placeholder="搜索父体…" autocomplete="off" />
-              <select id="value-select" size="6" aria-label="选择父体或产品组"></select>
+              <select id="value-select" size="8" multiple aria-label="选择一个或多个父体或产品组"></select>
+              <div class="multi-actions">
+                <button id="select-visible" type="button">全选当前结果</button>
+                <button id="clear-selection" type="button">清空选择</button>
+              </div>
               <small id="value-count"></small>
+              <small>也可按住 Ctrl（Windows）或 ⌘（Mac）点选多项。</small>
             </label>
           </div>
 
-          <div class="generation-note">
-            <svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg>
-            <p><strong>Niche 数据说明</strong>Bulk 不包含 ABA / Opportunity Explorer 数据，因此 NicheWord 与 NicheAsin 保留空模板。</p>
-          </div>
-
           <button class="primary-button generate-button" id="generate-button" type="button">
-            <span>生成 12-Sheet 诊断表</span>
+            <span>生成 8-Sheet 诊断表</span>
             <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-5-5m5 5 5-5"/><path d="M5 19h14"/></svg>
           </button>
         </div>
