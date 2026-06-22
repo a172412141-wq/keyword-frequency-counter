@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="description" content="上传 Amazon Ads Bulk，选择父体，生成 12 Sheet 广告诊断工作簿。" />
+    <title>Amazon 广告诊断表生成器</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1220'/%3E%3Cpath d='M7 23V14m6 9V8m6 15V12m6 11V5M4 26h24' fill='none' stroke='%2312b886' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="广告诊断表生成器首页">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M7 23V14m6 9V8m6 15V12m6 11V5"/><path d="M4 26h24"/></svg>
+        </span>
+        <span>
+          <strong>AD SCOPE</strong>
+          <small>Amazon Ads Diagnostics</small>
+        </span>
+      </a>
+      <div class="privacy-pill"><span></span> 文件仅在当前会话处理</div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow"><span>01</span> BULK TO ACTION</div>
+        <h1>把一张 Bulk，<br /><em>变成可执行的广告诊断。</em></h1>
+        <p>自动识别父体、聚合广告表现，并生成保留模板样式、公式、筛选和图表的 12-Sheet 工作簿。</p>
+        <div class="hero-meta" aria-label="工具能力">
+          <span>无需整理表头</span><i></i><span>无需手填公式</span><i></i><span>本地可部署</span>
+        </div>
+      </section>
+
+      <section class="workspace" aria-labelledby="workspace-title">
+        <div class="workspace-heading">
+          <div>
+            <p class="section-label">WORKSPACE</p>
+            <h2 id="workspace-title">生成你的诊断工作簿</h2>
+          </div>
+          <ol class="stepper" aria-label="生成步骤">
+            <li class="active" data-step="1"><span>1</span>上传</li>
+            <li data-step="2"><span>2</span>选择</li>
+            <li data-step="3"><span>3</span>下载</li>
+          </ol>
+        </div>
+
+        <div class="upload-panel" id="upload-panel">
+          <input id="file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+          <button class="drop-zone" id="drop-zone" type="button" aria-describedby="upload-hint">
+            <span class="upload-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><path d="M24 32V14m0 0-7 7m7-7 7 7"/><path d="M14 33H9a5 5 0 0 1-1-9.9A9 9 0 0 1 25.4 17a7 7 0 0 1 11.4 5.4A5.5 5.5 0 0 1 36 33h-2"/></svg>
+            </span>
+            <span class="drop-copy">
+              <strong>拖拽 Amazon Ads Bulk 到这里</strong>
+              <small id="upload-hint">或点击选择 .xlsx 文件，最大 200MB</small>
+            </span>
+            <span class="browse-chip">选择文件</span>
+          </button>
+
+          <div class="file-card" id="file-card" hidden>
+            <div class="file-type">XLSX</div>
+            <div class="file-copy"><strong id="file-name"></strong><small id="file-size"></small></div>
+            <button class="icon-button" id="remove-file" type="button" aria-label="移除文件">
+              <svg viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></svg>
+            </button>
+          </div>
+
+          <button class="sample-button" id="sample-button" type="button">
+            没有 Bulk？<strong>使用示例文件体验</strong>
+          </button>
+
+          <button class="primary-button" id="analyze-button" type="button" disabled>
+            <span>读取并校验 Bulk</span>
+            <svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
+          </button>
+        </div>
+
+        <div class="selection-panel" id="selection-panel" hidden>
+          <div class="summary-grid" aria-label="文件识别结果">
+            <article><span>识别工作表</span><strong id="summary-sheet">—</strong></article>
+            <article><span>表头行</span><strong id="summary-header">—</strong></article>
+            <article><span>数据行</span><strong id="summary-rows">—</strong></article>
+            <article><span>字段数</span><strong id="summary-fields">—</strong></article>
+          </div>
+
+          <div class="selection-grid">
+            <label class="field-control">
+              <span><b>01</b> 父体识别字段</span>
+              <select id="field-select"></select>
+              <small>优先使用 ASIN；Campaign 和 Ad Group 支持包含匹配。</small>
+            </label>
+            <label class="field-control">
+              <span><b>02</b> 父体 / 产品组</span>
+              <input id="value-search" type="search" placeholder="搜索父体…" autocomplete="off" />
+              <select id="value-select" size="6" aria-label="选择父体或产品组"></select>
+              <small id="value-count"></small>
+            </label>
+          </div>
+
+          <div class="generation-note">
+            <svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01"/><circle cx="12" cy="12" r="9"/></svg>
+            <p><strong>Niche 数据说明</strong>Bulk 不包含 ABA / Opportunity Explorer 数据，因此 NicheWord 与 NicheAsin 保留空模板。</p>
+          </div>
+
+          <button class="primary-button generate-button" id="generate-button" type="button">
+            <span>生成 12-Sheet 诊断表</span>
+            <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-5-5m5 5 5-5"/><path d="M5 19h14"/></svg>
+          </button>
+        </div>
+
+        <div class="result-panel" id="result-panel" hidden>
+          <div class="success-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m8 16 5 5 11-11"/></svg></div>
+          <p class="section-label">WORKBOOK READY</p>
+          <h3>诊断表已生成</h3>
+          <p id="result-copy">文件已开始下载。</p>
+          <div class="result-stats" id="result-stats"></div>
+          <div class="result-actions">
+            <button class="primary-button" id="download-again" type="button">再次下载</button>
+            <button class="secondary-button" id="start-over" type="button">生成另一份</button>
+          </div>
+        </div>
+
+        <div class="status-line" id="status-line" role="status" aria-live="polite" hidden></div>
+      </section>
+
+      <section class="output-section" aria-labelledby="output-title">
+        <div class="output-heading">
+          <p class="section-label">WHAT YOU GET</p>
+          <h2 id="output-title">一份表，四个诊断视角</h2>
+        </div>
+        <div class="feature-grid">
+          <article><span>01</span><h3>广告位拆解</h3><p>按 Placement 聚合 CPC、CTR、CVR、ACoS 与销售贡献。</p></article>
+          <article><span>02</span><h3>搜索词诊断</h3><p>聚合搜索词表现，自动计算投入、产出和效率指标。</p></article>
+          <article><span>03</span><h3>词频机会</h3><p>拆解全部搜索词和不出单搜索词，快速识别高频词根。</p></article>
+          <article><span>04</span><h3>预算视图</h3><p>按广告组合归集表现，帮助判断预算倾斜和控制空间。</p></article>
+        </div>
+      </section>
+    </main>
+
+    <footer><span>AD SCOPE · AMAZON ADS DIAGNOSTICS</span><span>Excel 公式将在打开文件时自动重算</span></footer>
+
+    <div class="loading-overlay" id="loading-overlay" hidden>
+      <div class="loader"><span></span><p id="loading-copy">正在读取 Bulk…</p></div>
+    </div>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

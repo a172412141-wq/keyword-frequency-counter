@@ -19,10 +19,16 @@ cd ad-diagnostic-generator
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-streamlit run app.py
+uvicorn api:app --reload --host 127.0.0.1 --port 8000
 ```
 
-浏览器打开 `http://localhost:8501`。
+浏览器打开 `http://127.0.0.1:8000`。前端与 Excel 生成 API 由同一个 FastAPI 服务提供，无需额外启动前端工程。
+
+如需使用 Streamlit 版本：
+
+```bash
+streamlit run app.py
+```
 
 ## 测试
 
@@ -31,7 +37,17 @@ pip install -r requirements-dev.txt
 pytest -q
 ```
 
-## 部署到 Streamlit Community Cloud
+## 前端与 API
+
+- `frontend/index.html`：上传、选择父体、下载结果的完整交互页面。
+- `frontend/styles.css`：响应式视觉样式。
+- `frontend/app.js`：文件校验、API 请求、筛选和下载逻辑。
+- `frontend/sample-bulk.xlsx`：可在首页直接载入的合成示例数据。
+- `api.py`：提供 `/api/analyze`、`/api/generate`、`/api/health`。
+
+API 文档运行后可在 `http://127.0.0.1:8000/api/docs` 查看。
+
+## 部署到 Streamlit Community Cloud（备选）
 
 1. 在 Streamlit Community Cloud 中选择本 GitHub 仓库。
 2. Main file path 填写 `ad-diagnostic-generator/app.py`。

@@ -194,6 +194,8 @@ def read_bulk_input(source: bytes | bytearray | io.BytesIO | str | Path) -> Bulk
         raise InputValidationError("缺少必要指标字段：" + "、".join(missing_metrics))
     if not any(_header_key(field) in available for field in PARENT_FIELDS):
         raise InputValidationError("缺少父体筛选字段：ASIN、SKU、Campaign Name 或 Ad Group Name。")
+    if not any(_as_text(row.get(field)) for row in records for field in PARENT_FIELDS):
+        raise InputValidationError("父体筛选字段存在，但没有可选择的 ASIN、SKU、Campaign 或 Ad Group 值。")
     if not any(_header_key(field) in available for field in SEARCH_TERM_FIELDS):
         raise InputValidationError("缺少搜索词来源字段：Customer Search Term、Keyword Text 或 Product Targeting Expression。")
 
