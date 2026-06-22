@@ -24,6 +24,17 @@ export type RootCandidate = {
   confidence: number;
 };
 
+export type UserRootRule = {
+  id: string;
+  phrase: string;
+  canonicalRoot: string;
+  category: RootCategory;
+  synonymGroupId: string;
+  conflictGroupId: string;
+  defaultEnabled: boolean;
+  updatedAt: string;
+};
+
 export type CombinationMode = "precision" | "expanded" | "full";
 export type OutputCase = "lowercase" | "title";
 

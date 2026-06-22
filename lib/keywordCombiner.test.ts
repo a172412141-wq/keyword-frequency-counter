@@ -4,6 +4,7 @@ import { hasConflict } from "./conflictRules";
 import { generateCombinationsCsv } from "./csvExport";
 import { normalizeKeyword, splitKeywordInput } from "./keywordNormalizer";
 import { extractRoots } from "./rootExtractor";
+import { createUserRootRule, normalizeUserRootRules } from "./rootRules";
 import { LUGGAGE_SAMPLE } from "./sampleData";
 import { DEFAULT_COMBINATION_SETTINGS, type RootCandidate } from "./keywordTypes";
 
@@ -62,6 +63,50 @@ describe("root extraction and canonical mapping", () => {
       category: "size_capacity",
       conflictGroupId: "size_dimension",
     });
+  });
+
+  it("用户规则可以新增短语并覆盖默认分类、归一词和启用状态", () => {
+    const customPhrase = createUserRootRule({
+      phrase: "water resistant",
+      canonicalRoot: "waterproof",
+      category: "feature_accessory",
+      synonymGroupId: "waterproofing",
+      defaultEnabled: true,
+    });
+    const blackOverride = createUserRootRule({
+      phrase: "black",
+      canonicalRoot: "black",
+      category: "noise",
+      defaultEnabled: false,
+    });
+    const customRoots = extractRoots(
+      splitKeywordInput("water-resistant black suitcase"),
+      [customPhrase, blackOverride],
+    );
+
+    expect(customRoots.find((item) => item.root === "water resistant")).toMatchObject({
+      canonicalRoot: "waterproof",
+      category: "feature_accessory",
+      synonymGroupId: "waterproofing",
+      enabled: true,
+      confidence: 1,
+    });
+    expect(customRoots.find((item) => item.root === "black")).toMatchObject({
+      category: "noise",
+      enabled: false,
+    });
+  });
+
+  it("导入规则时去除无效项，并按词根合并重复规则", () => {
+    const rules = normalizeUserRootRules([
+      { ...createUserRootRule({ phrase: "premium", category: "modifier" }) },
+      { ...createUserRootRule({ phrase: "premium", category: "noise" }) },
+      { ...createUserRootRule({ phrase: "one two three four five" }) },
+      { phrase: "missing category" },
+    ]);
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0]).toMatchObject({ phrase: "premium", category: "noise" });
   });
 });
 

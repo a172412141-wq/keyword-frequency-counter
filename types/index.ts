@@ -13,4 +13,5 @@ export type {
   OutputCase,
   RootCandidate,
   RootCategory,
+  UserRootRule,
 } from "@/lib/keywordTypes";

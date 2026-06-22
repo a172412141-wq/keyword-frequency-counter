@@ -1,29 +1,63 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { generateCombinations } from "@/lib/combinationGenerator";
 import { copyGeneratedKeywords, downloadCombinationsCsv } from "@/lib/csvExport";
 import { splitKeywordInput } from "@/lib/keywordNormalizer";
 import { extractRoots } from "@/lib/rootExtractor";
+import {
+  hasRootCandidateChanged,
+  normalizeUserRootRules,
+  ROOT_RULE_STORAGE_KEY,
+  rootCandidateToRule,
+} from "@/lib/rootRules";
 import { LUGGAGE_SAMPLE } from "@/lib/sampleData";
 import {
   DEFAULT_COMBINATION_SETTINGS,
   type CombinationSettings,
   type RootCandidate,
+  type UserRootRule,
 } from "@/lib/keywordTypes";
 import { CombinationResults } from "./CombinationResults";
 import { CombinationSettingsPanel } from "./CombinationSettingsPanel";
 import { RootCandidateTable } from "./RootCandidateTable";
+import { RootRuleLibrary } from "./RootRuleLibrary";
 
 type Notice = { message: string; tone: "success" | "error" };
 
 export function KeywordCombiner() {
   const [input, setInput] = useState("");
   const [roots, setRoots] = useState<RootCandidate[]>([]);
+  const [baselineRoots, setBaselineRoots] = useState<RootCandidate[]>([]);
+  const [userRules, setUserRules] = useState<UserRootRule[]>([]);
+  const inputRef = useRef("");
   const [settings, setSettings] = useState<CombinationSettings>(DEFAULT_COMBINATION_SETTINGS);
   const [notice, setNotice] = useState<Notice | null>(null);
   const result = useMemo(() => generateCombinations(roots, settings), [roots, settings]);
   const hasCoreProduct = roots.some((root) => root.enabled && root.category === "core_product");
+  const unsavedCorrectionCount = useMemo(() => {
+    const baselineByRoot = new Map(baselineRoots.map((root) => [root.root, root]));
+    return roots.filter((root) => hasRootCandidateChanged(root, baselineByRoot.get(root.root))).length;
+  }, [baselineRoots, roots]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem(ROOT_RULE_STORAGE_KEY);
+        if (!stored) return;
+        const loadedRules = normalizeUserRootRules(JSON.parse(stored));
+        setUserRules(loadedRules);
+        if (inputRef.current.trim()) {
+          const nextRoots = extractRoots(splitKeywordInput(inputRef.current), loadedRules);
+          setRoots(nextRoots);
+          setBaselineRoots(nextRoots);
+        }
+      } catch {
+        window.localStorage.removeItem(ROOT_RULE_STORAGE_KEY);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   function showNotice(message: string, tone: Notice["tone"] = "success") {
     setNotice({ message, tone });
@@ -33,18 +67,21 @@ export function KeywordCombiner() {
   }
 
   function analyze(value: string) {
-    const nextRoots = extractRoots(splitKeywordInput(value));
+    const nextRoots = extractRoots(splitKeywordInput(value), normalizeUserRootRules(userRules));
     setRoots(nextRoots);
+    setBaselineRoots(nextRoots);
     return nextRoots;
   }
 
   function handleInput(value: string) {
+    inputRef.current = value;
     setInput(value);
     analyze(value);
     setNotice(null);
   }
 
   function loadSample() {
+    inputRef.current = LUGGAGE_SAMPLE;
     setInput(LUGGAGE_SAMPLE);
     const nextRoots = analyze(LUGGAGE_SAMPLE);
     showNotice(`已加载示例并识别 ${nextRoots.length} 个词根`);
@@ -52,6 +89,35 @@ export function KeywordCombiner() {
 
   function updateRoot(id: string, patch: Partial<RootCandidate>) {
     setRoots((current) => current.map((root) => (root.id === id ? { ...root, ...patch } : root)));
+  }
+
+  function replaceUserRules(nextRules: UserRootRule[]) {
+    setUserRules(nextRules);
+    const normalizedRules = normalizeUserRootRules(nextRules);
+    window.localStorage.setItem(ROOT_RULE_STORAGE_KEY, JSON.stringify(normalizedRules));
+    if (inputRef.current.trim()) {
+      const nextRoots = extractRoots(splitKeywordInput(inputRef.current), normalizedRules);
+      setRoots(nextRoots);
+      setBaselineRoots(nextRoots);
+    }
+  }
+
+  function saveCurrentCorrections() {
+    const baselineByRoot = new Map(baselineRoots.map((root) => [root.root, root]));
+    const corrections = roots.filter((root) =>
+      hasRootCandidateChanged(root, baselineByRoot.get(root.root)),
+    );
+    if (corrections.length === 0) return showNotice("当前没有待保存的人工修正", "error");
+
+    const existingByPhrase = new Map(
+      normalizeUserRootRules(userRules).map((rule) => [rule.phrase, rule]),
+    );
+    for (const correction of corrections) {
+      const existing = existingByPhrase.get(correction.root);
+      existingByPhrase.set(correction.root, rootCandidateToRule(correction, existing?.id));
+    }
+    replaceUserRules(Array.from(existingByPhrase.values()));
+    showNotice(`已保存 ${corrections.length} 项修正，后续识别将自动应用`);
   }
 
   async function handleCopy() {
@@ -86,7 +152,9 @@ export function KeywordCombiner() {
                 disabled={!input}
                 onClick={() => {
                   setInput("");
+                  inputRef.current = "";
                   setRoots([]);
+                  setBaselineRoots([]);
                   setNotice(null);
                 }}
                 className="min-h-9 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
@@ -118,6 +186,16 @@ export function KeywordCombiner() {
       </div>
 
       <div className="mt-5">
+        <RootRuleLibrary
+          rules={userRules}
+          unsavedCorrectionCount={unsavedCorrectionCount}
+          onChange={replaceUserRules}
+          onSaveCurrentCorrections={saveCurrentCorrections}
+          onNotice={showNotice}
+        />
+      </div>
+
+      <div className="mt-5">
         <CombinationResults
           result={result}
           hasRoots={roots.length > 0}
@@ -132,7 +210,7 @@ export function KeywordCombiner() {
       </div>
 
       <footer className="mt-6 flex flex-col gap-1 text-xs leading-5 text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-        <p>词根识别基于可扩展规则词典、频次和短语覆盖优先。</p>
+        <p>默认词典 + 我的规则库共同判断；本地规则优先。</p>
         <p>每条结果恰好包含 1 个核心产品词根</p>
       </footer>
 

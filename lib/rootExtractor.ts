@@ -1,13 +1,19 @@
 import { defaultConflictGroup, PHRASE_DICTIONARY, STOP_WORDS } from "./keywordConfig";
 import { normalizeKeyword } from "./keywordNormalizer";
 import { applySynonymCanonicalization, findSynonymGroup } from "./synonymRules";
-import { ROOT_CATEGORIES, type RootCandidate, type RootCategory } from "./keywordTypes";
+import {
+  ROOT_CATEGORIES,
+  type RootCandidate,
+  type RootCategory,
+  type UserRootRule,
+} from "./keywordTypes";
 
 type CountedPhrase = {
   root: string;
   category: RootCategory;
   sourceCount: number;
   confidence: number;
+  userRule?: UserRootRule;
 };
 
 function countNgrams(keywords: string[]): Map<string, number> {
@@ -44,17 +50,35 @@ function isCompositeCore(root: string): boolean {
   return hasNestedCore && hasNestedScenario;
 }
 
-function recognizedPhrases(counts: Map<string, number>): CountedPhrase[] {
+function recognizedPhrases(
+  counts: Map<string, number>,
+  userRules: UserRootRule[],
+): CountedPhrase[] {
   const phrases: CountedPhrase[] = [];
+  const userRuleRoots = new Set(userRules.map((rule) => normalizeKeyword(rule.phrase)));
 
   for (const category of ROOT_CATEGORIES) {
     for (const configuredPhrase of PHRASE_DICTIONARY[category]) {
       const root = normalizeKeyword(configuredPhrase);
+      if (userRuleRoots.has(root)) continue;
       const sourceCount = counts.get(root) ?? 0;
       if (!sourceCount || (category === "core_product" && isCompositeCore(root))) continue;
 
       phrases.push({ root, category, sourceCount, confidence: 0.98 });
     }
+  }
+
+  for (const rule of userRules) {
+    const root = normalizeKeyword(rule.phrase);
+    const sourceCount = counts.get(root) ?? 0;
+    if (!root || !sourceCount) continue;
+    phrases.push({
+      root,
+      category: rule.category,
+      sourceCount,
+      confidence: 1,
+      userRule: rule,
+    });
   }
 
   const unique = Array.from(
@@ -136,32 +160,51 @@ function addUnknownPhrases(
   return additions;
 }
 
-export function extractRoots(keywords: string[]): RootCandidate[] {
+export function extractRoots(keywords: string[], userRules: UserRootRule[] = []): RootCandidate[] {
   const normalizedKeywords = keywords.map(normalizeKeyword).filter(Boolean);
   if (normalizedKeywords.length === 0) return [];
 
   const counts = countNgrams(normalizedKeywords);
-  const recognized = recognizedPhrases(counts);
+  const recognized = recognizedPhrases(counts, userRules);
   const phrases = [...recognized, ...addUnknownPhrases(counts, recognized)];
 
   const candidates = phrases.map((phrase, index): RootCandidate => {
     const synonymGroup = findSynonymGroup(phrase.root);
+    const rule = phrase.userRule;
     return {
       id: `${phrase.root.replace(/\s+/g, "-")}-${index}`,
       root: phrase.root,
-      canonicalRoot: synonymGroup?.canonical ?? phrase.root,
+      canonicalRoot: rule?.canonicalRoot || synonymGroup?.canonical || phrase.root,
       category: phrase.category,
-      synonymGroupId: synonymGroup?.id ?? "",
-      conflictGroupId: defaultConflictGroup(phrase.root),
-      enabled: phrase.category !== "noise",
+      synonymGroupId: rule?.synonymGroupId ?? synonymGroup?.id ?? "",
+      conflictGroupId: rule?.conflictGroupId ?? defaultConflictGroup(phrase.root),
+      enabled: rule?.defaultEnabled ?? phrase.category !== "noise",
       sourceCount: phrase.sourceCount,
       sourceKeywords: sourceKeywordsFor(phrase.root, normalizedKeywords),
       confidence: phrase.confidence,
     };
   });
 
+  const canonicalized = applySynonymCanonicalization(candidates);
+  const rulesByRoot = new Map(userRules.map((rule) => [normalizeKeyword(rule.phrase), rule]));
+  const canonicalByGroup = new Map(
+    userRules
+      .filter((rule) => rule.synonymGroupId && rule.canonicalRoot)
+      .map((rule) => [rule.synonymGroupId, rule.canonicalRoot]),
+  );
+  const withUserOverrides = canonicalized.map((candidate) => {
+    const rule = rulesByRoot.get(candidate.root);
+    return {
+      ...candidate,
+      canonicalRoot:
+        rule?.canonicalRoot ||
+        canonicalByGroup.get(candidate.synonymGroupId) ||
+        candidate.canonicalRoot,
+    };
+  });
+
   const categoryRank = new Map(ROOT_CATEGORIES.map((category, index) => [category, index]));
-  return applySynonymCanonicalization(candidates).sort((a, b) => {
+  return withUserOverrides.sort((a, b) => {
     const categoryDifference =
       (categoryRank.get(a.category) ?? 99) - (categoryRank.get(b.category) ?? 99);
     if (categoryDifference !== 0) return categoryDifference;

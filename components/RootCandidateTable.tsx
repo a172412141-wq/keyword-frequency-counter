@@ -58,9 +58,23 @@ export function RootCandidateTable({ roots, onUpdate }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <span className="block font-mono text-sm font-semibold text-slate-900">{root.root}</span>
-                    {root.canonicalRoot !== root.root && (
-                      <span className="mt-1 block font-mono text-xs text-teal-700">→ {root.canonicalRoot}</span>
-                    )}
+                    <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                      <span aria-hidden="true">→</span>
+                      <span className="sr-only">{root.root} 归一词根</span>
+                      <input
+                        aria-label={`${root.root} 归一词根`}
+                        value={root.canonicalRoot}
+                        onChange={(event) =>
+                          onUpdate(root.id, {
+                            canonicalRoot: event.target.value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trimStart(),
+                          })
+                        }
+                        onBlur={(event) => {
+                          if (!event.target.value.trim()) onUpdate(root.id, { canonicalRoot: root.root });
+                        }}
+                        className="min-h-8 w-full rounded-md border border-slate-200 bg-white px-2 font-mono text-xs text-teal-700 focus:border-teal-500 focus:outline-none"
+                      />
+                    </label>
                   </td>
                   <td className="px-4 py-3">
                     <select
