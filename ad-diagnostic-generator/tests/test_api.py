@@ -32,6 +32,9 @@ def test_analyze_returns_parent_choices():
     assert response.status_code == 200
     body = response.json()
     assert body["summary"]["data_rows"] == 5
+    assert body["summary"]["search_term_sheet_name"] == "SP Search Term Report"
+    assert body["summary"]["search_term_rows"] == 3
+    assert body["summary"]["portfolio_rows"] == 1
     asin = next(field for field in body["fields"] if field["name"] == "ASIN (Informational only)")
     assert asin["values"] == ["B0DEMO0001"]
 
@@ -50,6 +53,11 @@ def test_generate_downloads_workbook():
     workbook = load_workbook(io.BytesIO(response.content), data_only=False, keep_links=False)
     assert workbook["Bulk"]["W15"].value == "B0DEMO0001"
     assert workbook["BidingAdjustment"]["AH6"].value == "Placement Top"
+    assert workbook["搜索词模板"]["A4"].value == "carry on luggage"
+    assert workbook["搜索词模板"]["B4"].value == 9000
+    assert workbook["广告组合预算"]["C4"].value == "enabled"
+    assert workbook["广告组合预算"]["D4"].value == "dateRange"
+    assert workbook["广告组合预算"]["E4"].value == 150
 
 
 def test_analyze_rejects_non_xlsx():

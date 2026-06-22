@@ -86,6 +86,10 @@ async def analyze(file: UploadFile = File(...)) -> dict[str, object]:
             "header_row": bulk.header_row,
             "data_rows": len(bulk.rows),
             "field_count": len(bulk.headers),
+            "search_term_sheet_name": bulk.search_term_sheet_name,
+            "search_term_rows": len(bulk.search_term_rows),
+            "portfolio_sheet_name": bulk.portfolio_sheet_name,
+            "portfolio_rows": len(bulk.portfolio_rows),
         },
         "fields": [
             {

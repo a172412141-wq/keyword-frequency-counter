@@ -162,9 +162,9 @@ async function analyzeFile() {
     state.fields = data.fields;
     elements.fileSize.textContent = `${formatBytes(state.file.size)} · 校验通过`;
     $("summary-sheet").textContent = data.summary.sheet_name;
-    $("summary-header").textContent = `第 ${data.summary.header_row} 行`;
     $("summary-rows").textContent = data.summary.data_rows.toLocaleString();
-    $("summary-fields").textContent = data.summary.field_count.toLocaleString();
+    $("summary-search-rows").textContent = data.summary.search_term_rows.toLocaleString();
+    $("summary-portfolio-rows").textContent = data.summary.portfolio_rows.toLocaleString();
     elements.fieldSelect.replaceChildren(
       ...state.fields.map((field) => new Option(`${field.label} · ${field.count.toLocaleString()} 个`, field.name)),
     );

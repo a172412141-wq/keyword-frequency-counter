@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from copy import copy
 from dataclasses import dataclass
 from datetime import date
+from itertools import islice
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -66,6 +67,12 @@ class BulkInput:
     header_row: int
     headers: tuple[str, ...]
     rows: tuple[dict[str, Any], ...]
+    search_term_sheet_name: str | None = None
+    search_term_headers: tuple[str, ...] = ()
+    search_term_rows: tuple[dict[str, Any], ...] = ()
+    portfolio_sheet_name: str | None = None
+    portfolio_headers: tuple[str, ...] = ()
+    portfolio_rows: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -134,54 +141,103 @@ def _read_source(source: bytes | bytearray | io.BytesIO | str | Path):
     return load_workbook(source, data_only=False, read_only=True, keep_links=False)
 
 
-def read_bulk_input(source: bytes | bytearray | io.BytesIO | str | Path) -> BulkInput:
-    workbook = _read_source(source)
-    best: tuple[int, Any, int, list[str]] | None = None
-
+def _sheet_profiles(workbook) -> list[tuple[Any, int, list[str], set[str]]]:
+    profiles = []
     for sheet in workbook.worksheets:
-        for row_index in range(1, min(sheet.max_row, 30) + 1):
-            headers = [normalize_header(sheet.cell(row_index, col).value) for col in range(1, sheet.max_column + 1)]
+        # Amazon's generated Bulk files can incorrectly declare A1:A1 as the
+        # worksheet dimension. Resetting it makes read-only streaming inspect
+        # the actual XML rows instead of silently returning one cell.
+        if hasattr(sheet, "reset_dimensions"):
+            sheet.reset_dimensions()
+        for row_index, values in enumerate(islice(sheet.iter_rows(values_only=True), 30), 1):
+            headers = [normalize_header(value) for value in values]
             keys = {_header_key(header) for header in headers if header}
-            score = sum(
-                key in keys
-                for key in {
-                    "entity",
-                    "campaign name",
-                    "campaign name (informational only)",
-                    "asin (informational only)",
-                    "sku",
-                    "impressions",
-                    "clicks",
-                    "spend",
-                }
-            )
-            if "entity" in keys and score >= 3 and (best is None or score > best[0]):
-                best = (score, sheet, row_index, headers)
+            if keys:
+                profiles.append((sheet, row_index, headers, keys))
+    return profiles
 
-    if best is None:
-        raise InputValidationError("未识别到 Amazon Ads Bulk 表头。请上传包含 Entity、Campaign/SKU/ASIN 和广告指标的 .xlsx。")
 
-    _, sheet, header_row, headers = best
-    canonical_by_key = {_header_key(header): header for header in headers if header}
-    for alias, canonical in HEADER_ALIASES.items():
-        if alias in canonical_by_key:
-            canonical_by_key[alias] = canonical
-
+def _records_from_profile(profile: tuple[Any, int, list[str], set[str]]) -> list[dict[str, Any]]:
+    sheet, header_row, headers, _ = profile
     records: list[dict[str, Any]] = []
     blank_streak = 0
-    for row_index in range(header_row + 1, sheet.max_row + 1):
-        values = [sheet.cell(row_index, col).value for col in range(1, len(headers) + 1)]
+    for row_index, values in enumerate(sheet.iter_rows(values_only=True), 1):
+        if row_index <= header_row:
+            continue
+        values = tuple(values[:len(headers)])
         if all(_is_blank(value) for value in values):
             blank_streak += 1
             if blank_streak >= 50:
                 break
             continue
         blank_streak = 0
-        record: dict[str, Any] = {}
-        for header, value in zip(headers, values):
-            if header:
-                record[header] = value
-        records.append(record)
+        records.append({header: value for header, value in zip(headers, values) if header})
+    return records
+
+
+def _best_profile(
+    profiles: Sequence[tuple[Any, int, list[str], set[str]]],
+    required: set[str],
+    preferred_sheet: str,
+) -> tuple[Any, int, list[str], set[str]] | None:
+    candidates = [profile for profile in profiles if required.issubset(profile[3])]
+    if not candidates:
+        return None
+    return max(
+        candidates,
+        key=lambda profile: (
+            profile[0].title.casefold() == preferred_sheet.casefold(),
+            len(profile[3]),
+            -profile[1],
+        ),
+    )
+
+
+def read_bulk_input(source: bytes | bytearray | io.BytesIO | str | Path) -> BulkInput:
+    workbook = _read_source(source)
+    profiles = _sheet_profiles(workbook)
+    metric_keys = {_header_key(field) for field in METRIC_FIELDS}
+    main = _best_profile(
+        profiles,
+        {"entity", "campaign id", *metric_keys},
+        "Sponsored Products Campaigns",
+    )
+    # Backward compatibility for simplified single-sheet files without IDs.
+    if main is None:
+        main_candidates = [
+            profile for profile in profiles
+            if "entity" in profile[3] and metric_keys.issubset(profile[3])
+        ]
+        main = max(main_candidates, key=lambda profile: len(profile[3]), default=None)
+    if main is None:
+        incomplete_candidates = [profile for profile in profiles if "entity" in profile[3]]
+        main = max(
+            incomplete_candidates,
+            key=lambda profile: (
+                profile[0].title.casefold() == "sponsored products campaigns",
+                len(metric_keys & profile[3]),
+                len(profile[3]),
+            ),
+            default=None,
+        )
+    if main is None:
+        raise InputValidationError("未识别到 Sponsored Products Campaigns。请上传 Amazon Ads 控制台导出的标准 Bulk .xlsx。")
+
+    search = _best_profile(
+        profiles,
+        {"customer search term", "campaign id", *metric_keys},
+        "SP Search Term Report",
+    )
+    portfolio = _best_profile(
+        profiles,
+        {"portfolio id", "portfolio name (informational only)", "budget policy"},
+        "Portfolios",
+    )
+
+    sheet, header_row, headers, _ = main
+    records = _records_from_profile(main)
+    search_records = _records_from_profile(search) if search else []
+    portfolio_records = _records_from_profile(portfolio) if portfolio else []
 
     if not records:
         raise InputValidationError("Bulk 表只有表头，没有可用数据行。")
@@ -196,7 +252,7 @@ def read_bulk_input(source: bytes | bytearray | io.BytesIO | str | Path) -> Bulk
         raise InputValidationError("缺少父体筛选字段：ASIN、SKU、Campaign Name 或 Ad Group Name。")
     if not any(_as_text(row.get(field)) for row in records for field in PARENT_FIELDS):
         raise InputValidationError("父体筛选字段存在，但没有可选择的 ASIN、SKU、Campaign 或 Ad Group 值。")
-    if not any(_header_key(field) in available for field in SEARCH_TERM_FIELDS):
+    if not search_records and not any(_header_key(field) in available for field in SEARCH_TERM_FIELDS):
         raise InputValidationError("缺少搜索词来源字段：Customer Search Term、Keyword Text 或 Product Targeting Expression。")
 
     return BulkInput(
@@ -204,6 +260,12 @@ def read_bulk_input(source: bytes | bytearray | io.BytesIO | str | Path) -> Bulk
         header_row=header_row,
         headers=tuple(header for header in headers if header),
         rows=tuple(records),
+        search_term_sheet_name=search[0].title if search else None,
+        search_term_headers=tuple(header for header in search[2] if header) if search else (),
+        search_term_rows=tuple(search_records),
+        portfolio_sheet_name=portfolio[0].title if portfolio else None,
+        portfolio_headers=tuple(header for header in portfolio[2] if header) if portfolio else (),
+        portfolio_rows=tuple(portfolio_records),
     )
 
 
@@ -248,18 +310,53 @@ def filter_parent_rows(rows: Sequence[Mapping[str, Any]], field: str, value: str
         }
         for relation_field in relation_fields
     }
+    strong_fields = [field for field in ("Campaign ID", "Ad Group ID") if related[field]]
+    match_fields = strong_fields or [field for field in relation_fields[1:] if related[field]]
     selected: list[dict[str, Any]] = []
     for row in rows:
         actual = _as_text(row.get(field)).casefold()
         direct = wanted in actual if fuzzy else actual == wanted
         shares_relation = any(
             _as_text(row.get(relation_field)).casefold() in values
-            for relation_field, values in related.items()
+            for relation_field in match_fields
+            for values in (related[relation_field],)
             if values and _as_text(row.get(relation_field))
         )
         if direct or shares_relation:
             selected.append(dict(row))
     return selected
+
+
+def filter_related_rows(
+    rows: Sequence[Mapping[str, Any]],
+    selected_rows: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Match auxiliary report rows to the selected campaign/ad-group set."""
+    relation_fields = (
+        "Campaign ID",
+        "Ad Group ID",
+        "Campaign Name (Informational only)",
+        "Ad Group Name (Informational only)",
+    )
+    related = {
+        field: {
+            _as_text(row.get(field)).casefold()
+            for row in selected_rows
+            if _as_text(row.get(field))
+        }
+        for field in relation_fields
+    }
+    strong_fields = [field for field in ("Campaign ID", "Ad Group ID") if related[field]]
+    match_fields = strong_fields or [field for field in relation_fields[2:] if related[field]]
+    return [
+        dict(row)
+        for row in rows
+        if any(
+            _as_text(row.get(field)).casefold() in related[field]
+            for field in match_fields
+            if _as_text(row.get(field))
+        )
+    ]
 
 
 def safe_filename(parent_value: str, today: date | None = None) -> str:
@@ -537,6 +634,7 @@ def _aggregate_portfolios(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, A
     ]
     grouped: dict[str, dict[str, Any]] = {}
     campaigns: dict[str, set[str]] = defaultdict(set)
+    portfolio_ids: dict[str, set[str]] = defaultdict(set)
     for row in source_rows:
         name = _portfolio_name(row)
         item = grouped.setdefault(name, {metric: 0.0 for metric in METRIC_FIELDS})
@@ -545,24 +643,52 @@ def _aggregate_portfolios(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, A
         campaign = _as_text(row.get("Campaign Name (Informational only)")) or _as_text(row.get("Campaign Name"))
         if campaign:
             campaigns[name].add(campaign)
+        portfolio_id = _as_text(row.get("Portfolio ID"))
+        if portfolio_id:
+            portfolio_ids[name].add(portfolio_id)
     result = []
     for name, metrics in grouped.items():
-        result.append({"name": name, "campaigns": len(campaigns[name]), **metrics})
+        result.append({
+            "name": name,
+            "portfolio_ids": tuple(sorted(portfolio_ids[name])),
+            "campaigns": len(campaigns[name]),
+            **metrics,
+        })
     return sorted(result, key=lambda item: (-item["Spend"], item["name"].casefold()))
 
 
-def _write_portfolios(workbook, rows: Sequence[Mapping[str, Any]]) -> int:
+def _write_portfolios(
+    workbook,
+    rows: Sequence[Mapping[str, Any]],
+    portfolio_rows: Sequence[Mapping[str, Any]] = (),
+) -> int:
     sheet = workbook["广告组合预算"]
     items = _aggregate_portfolios(rows)
+    metadata_by_id = {
+        _as_text(row.get("Portfolio ID")).casefold(): row
+        for row in portfolio_rows
+        if _as_text(row.get("Portfolio ID"))
+    }
+    metadata_by_name = {
+        _portfolio_name(row).casefold(): row
+        for row in portfolio_rows
+        if _portfolio_name(row) != "未分配广告组合"
+    }
     last_row = 3 + max(len(items), 1)
     _clear_values(sheet, 4, max(19, last_row), 32)
     for offset, item in enumerate(items):
         row = 4 + offset
         _copy_row_style(sheet, 4, row, 32)
+        metadata = next(
+            (metadata_by_id[portfolio_id.casefold()] for portfolio_id in item["portfolio_ids"] if portfolio_id.casefold() in metadata_by_id),
+            metadata_by_name.get(item["name"].casefold(), {}),
+        )
         sheet.cell(row, 2).value = item["name"]
-        sheet.cell(row, 3).value = "N/A"
-        sheet.cell(row, 4).value = "N/A"
-        sheet.cell(row, 5).value = "N/A"
+        sheet.cell(row, 3).value = _as_text(metadata.get("State (Informational only)")) or "N/A"
+        sheet.cell(row, 4).value = _as_text(metadata.get("Budget Policy")) or "N/A"
+        sheet.cell(row, 5).value = metadata.get("Budget Amount") if not _is_blank(metadata.get("Budget Amount")) else "N/A"
+        sheet.cell(row, 6).value = metadata.get("Budget Start Date") if not _is_blank(metadata.get("Budget Start Date")) else "N/A"
+        sheet.cell(row, 7).value = metadata.get("Budget End Date") if not _is_blank(metadata.get("Budget End Date")) else "N/A"
         sheet.cell(row, 8).value = item["campaigns"]
         sheet.cell(row, 9).value = item["Impressions"]
         sheet.cell(row, 10).value = item["Clicks"]
@@ -643,11 +769,12 @@ def generate_diagnostic_workbook(
     _write_bulk_sheet(workbook, filtered)
     bidding_count = _write_bidding_sheet(workbook, filtered)
     _write_visualization(workbook)
-    aggregated = _aggregate_search_terms(filtered)
+    search_rows = filter_related_rows(bulk.search_term_rows, filtered) if bulk.search_term_rows else filtered
+    aggregated = _aggregate_search_terms(search_rows)
     search_term_count = _write_search_terms(workbook, aggregated)
     _write_word_frequency(workbook, aggregated, "词频分析(全部搜索词）", False)
     _write_word_frequency(workbook, aggregated, "词频分析 (不出单搜素词)", True)
-    portfolio_count = _write_portfolios(workbook, filtered)
+    portfolio_count = _write_portfolios(workbook, filtered, bulk.portfolio_rows)
     pair_count = _write_asin_sku(workbook, filtered)
 
     workbook.calculation.fullCalcOnLoad = True

@@ -40,7 +40,7 @@ st.markdown(
 )
 
 st.write("")
-uploaded = st.file_uploader("1. 上传 Amazon Ads Bulk", type=["xlsx"], help="支持表头位于第 1 行或 Amazon 模板中的第 14 行。")
+uploaded = st.file_uploader("1. 上传 Amazon Ads Bulk", type=["xlsx"], help="支持 Amazon 控制台导出的标准多工作表 Bulk，也兼容旧单表文件。")
 
 if not uploaded:
     st.info("上传文件后，工具会先校验字段，再显示可选父体。")
@@ -48,7 +48,7 @@ if not uploaded:
         st.markdown(
             "- 必需：`Entity`、`Impressions`、`Clicks`、`Spend`、`Sales`、`Orders`\n"
             "- 父体识别：ASIN、SKU、Campaign Name、Ad Group Name 至少一个\n"
-            "- 搜索词来源：Customer Search Term、Keyword Text、Product Targeting Expression 至少一个"
+            "- 搜索词来源：优先读取 SP Search Term Report；旧单表可使用 Customer Search Term、Keyword Text 或 Product Targeting Expression"
         )
     st.stop()
 
@@ -63,10 +63,11 @@ except Exception as exc:  # pragma: no cover - UI safety net
     st.error(f"文件读取失败：{exc}")
     st.stop()
 
-left, middle, right = st.columns(3)
-left.metric("识别工作表", bulk.sheet_name)
-middle.metric("表头行", bulk.header_row)
-right.metric("数据行", f"{len(bulk.rows):,}")
+left, middle, right, fourth = st.columns(4)
+left.metric("主数据表", bulk.sheet_name)
+middle.metric("Campaign 行", f"{len(bulk.rows):,}")
+right.metric("搜索词行", f"{len(bulk.search_term_rows):,}")
+fourth.metric("Portfolio 行", f"{len(bulk.portfolio_rows):,}")
 
 field_labels = {
     "ASIN (Informational only)": "ASIN（优先）",
@@ -115,7 +116,7 @@ with st.expander("生成内容与限制"):
         """
         - 自动生成：Bulk、BidingAdjustment、广告位可视化、搜索词模板、两张词频分析、广告组合预算、LX_Asin。
         - 保留结构：NicheWord、NicheAsin、否词库、H1F广告架构。
-        - 广告组合预算中的预算类型、组合预算和起止日期无法仅由 Bulk 准确还原，因此标记为 `N/A`。
+        - 标准 Bulk 包含 Portfolios 时，会自动填入预算类型、组合预算和起止日期；旧单表缺失时标记为 `N/A`。
         - Excel 公式设置为打开文件时自动重算；首次打开后请等待 Excel/WPS 完成计算。
         """
     )
