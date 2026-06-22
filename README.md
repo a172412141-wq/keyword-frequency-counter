@@ -1,6 +1,6 @@
 # 关键词词频统计
 
-一个在浏览器本地运行的英文关键词词频统计工具。输入多行关键词组，即可获得词根、出现次数和占比，并支持复制 TSV 或导出带 UTF-8 BOM 的 CSV。
+一个在浏览器本地运行的英文关键词词频统计工具。输入多行关键词组，可任意组合输出单词根、双词根和三词根的出现次数与占比，并支持复制 TSV 或导出带 UTF-8 BOM 的 CSV。
 
 在线使用：[关键词词频统计](https://a172412141-wq.github.io/keyword-frequency-counter/)
 
@@ -29,7 +29,7 @@ pnpm build
 
 ## 代码结构
 
-- `lib/wordFrequency.ts`：清洗、拆词、词频统计、占比与排序
+- `lib/wordFrequency.ts`：清洗、拆词、单/双/三词根统计、占比与排序
 - `lib/export.ts`：TSV 复制内容与 CSV 文件生成
 - `components/`：输入、摘要、操作按钮与结果表格
 - `app/page.tsx`：页面状态与组件组合

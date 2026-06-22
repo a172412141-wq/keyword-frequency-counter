@@ -1,1 +1,6 @@
-export type { WordFrequencyResult, WordFrequencySummary } from "@/lib/wordFrequency";
+export type {
+  NgramSize,
+  WordFrequencyGroup,
+  WordFrequencyResult,
+  WordFrequencySummary,
+} from "@/lib/wordFrequency";

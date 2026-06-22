@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react";
 import { ActionButtons } from "@/components/ActionButtons";
 import { FrequencyTable } from "@/components/FrequencyTable";
+import { NgramSelector } from "@/components/NgramSelector";
 import { SummaryCards } from "@/components/SummaryCards";
 import { TextInput } from "@/components/TextInput";
 import { copyRowsToClipboard, downloadCsv } from "@/lib/export";
 import {
   analyzeWordFrequency,
   EMPTY_SUMMARY,
+  type NgramSize,
   type WordFrequencySummary,
 } from "@/lib/wordFrequency";
 
@@ -20,6 +22,7 @@ type Notice = {
 export default function Home() {
   const [input, setInput] = useState("");
   const [summary, setSummary] = useState<WordFrequencySummary>(EMPTY_SUMMARY);
+  const [selectedSizes, setSelectedSizes] = useState<NgramSize[]>([1]);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -27,7 +30,10 @@ export default function Home() {
     () => input.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).length,
     [input],
   );
-  const liveSummary = useMemo(() => analyzeWordFrequency(input), [input]);
+  const liveSummary = useMemo(
+    () => analyzeWordFrequency(input, selectedSizes),
+    [input, selectedSizes],
+  );
   const inputHasContent = input.trim().length > 0;
   const hasResults = summary.rows.length > 0;
 
@@ -39,12 +45,12 @@ export default function Home() {
   }
 
   function handleAnalyze() {
-    const result = analyzeWordFrequency(input);
+    const result = analyzeWordFrequency(input, selectedSizes);
     setSummary(result);
     setHasAnalyzed(true);
 
     if (result.rows.length > 0) {
-      showNotice(`统计完成：共识别 ${result.uniqueWords} 个词根`);
+      showNotice(`统计完成：共识别 ${result.uniqueWords} 个统计项`);
     }
   }
 
@@ -56,6 +62,22 @@ export default function Home() {
       setHasAnalyzed(false);
     }
 
+    setNotice(null);
+  }
+
+  function handleSizeToggle(size: NgramSize) {
+    if (selectedSizes.includes(size) && selectedSizes.length === 1) {
+      showNotice("请至少保留一种输出方式", "error");
+      return;
+    }
+
+    setSelectedSizes((current) =>
+      current.includes(size)
+        ? current.filter((item) => item !== size)
+        : [...current, size].sort((a, b) => a - b),
+    );
+    setSummary(EMPTY_SUMMARY);
+    setHasAnalyzed(false);
     setNotice(null);
   }
 
@@ -73,7 +95,7 @@ export default function Home() {
     }
 
     try {
-      await copyRowsToClipboard(summary.rows);
+      await copyRowsToClipboard(summary);
       showNotice("结果已复制，可直接粘贴到 Excel");
     } catch {
       showNotice("复制失败，请检查浏览器权限", "error");
@@ -86,7 +108,7 @@ export default function Home() {
       return;
     }
 
-    downloadCsv(summary.rows);
+    downloadCsv(summary);
     showNotice("CSV 文件已导出");
   }
 
@@ -102,9 +124,13 @@ export default function Home() {
             关键词词频统计
           </h1>
           <p className="mt-4 text-base leading-7 text-slate-600 sm:text-lg">
-            输入多行关键词组，系统会按空白拆分单词，并统计每个词根的出现次数和占比。
+            输入多行关键词组，自由选择单词根、双词根或三词根，统计出现次数和占比。
           </p>
         </header>
+
+        <div className="mb-5">
+          <NgramSelector selectedSizes={selectedSizes} onToggle={handleSizeToggle} />
+        </div>
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
           <TextInput value={input} onChange={handleInputChange} onAnalyze={handleAnalyze} />

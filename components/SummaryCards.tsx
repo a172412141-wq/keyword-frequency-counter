@@ -7,7 +7,7 @@ type SummaryCardsProps = {
 const items = [
   { key: "lines", label: "输入行数" },
   { key: "total", label: "总单词数" },
-  { key: "unique", label: "唯一词根数" },
+  { key: "unique", label: "唯一统计项" },
 ] as const;
 
 export function SummaryCards({ lineCount, totalWords, uniqueWords }: SummaryCardsProps) {

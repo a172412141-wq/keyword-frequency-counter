@@ -1,12 +1,23 @@
-import type { WordFrequencyResult } from "./wordFrequency";
+import type { WordFrequencyGroup, WordFrequencySummary } from "./wordFrequency";
 
 const formatPercentage = (percentage: number) => `${(percentage * 100).toFixed(2)}%`;
 
-export function generateTsv(rows: WordFrequencyResult[]): string {
-  const header = "词根\t出现次数\t占比";
-  const body = rows.map(
-    ({ word, count, percentage }) => `${word}\t${count}\t${formatPercentage(percentage)}`,
-  );
+function includeTypeColumn(summary: WordFrequencySummary): boolean {
+  return summary.groups.length > 1;
+}
+
+function groupToTsvRows(group: WordFrequencyGroup, withType: boolean): string[] {
+  return group.rows.map(({ word, count, percentage }) => {
+    const cells = withType ? [group.label, word, count, formatPercentage(percentage)] :
+      [word, count, formatPercentage(percentage)];
+    return cells.join("\t");
+  });
+}
+
+export function generateTsv(summary: WordFrequencySummary): string {
+  const withType = includeTypeColumn(summary);
+  const header = withType ? "类型\t词根\t出现次数\t占比" : "词根\t出现次数\t占比";
+  const body = summary.groups.flatMap((group) => groupToTsvRows(group, withType));
 
   return [header, ...body].join("\n");
 }
@@ -19,17 +30,24 @@ function escapeCsvCell(value: string): string {
   return value;
 }
 
-export function generateCsv(rows: WordFrequencyResult[]): string {
-  const header = "词根,出现次数,占比";
-  const body = rows.map(({ word, count, percentage }) =>
-    [escapeCsvCell(word), count.toString(), formatPercentage(percentage)].join(","),
-  );
+function groupToCsvRows(group: WordFrequencyGroup, withType: boolean): string[] {
+  return group.rows.map(({ word, count, percentage }) => {
+    const cells = withType ? [group.label, word, count.toString(), formatPercentage(percentage)] :
+      [word, count.toString(), formatPercentage(percentage)];
+    return cells.map(escapeCsvCell).join(",");
+  });
+}
+
+export function generateCsv(summary: WordFrequencySummary): string {
+  const withType = includeTypeColumn(summary);
+  const header = withType ? "类型,词根,出现次数,占比" : "词根,出现次数,占比";
+  const body = summary.groups.flatMap((group) => groupToCsvRows(group, withType));
 
   return `\uFEFF${[header, ...body].join("\r\n")}`;
 }
 
-export async function copyRowsToClipboard(rows: WordFrequencyResult[]): Promise<void> {
-  const content = generateTsv(rows);
+export async function copyRowsToClipboard(summary: WordFrequencySummary): Promise<void> {
+  const content = generateTsv(summary);
 
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(content);
@@ -51,8 +69,8 @@ export async function copyRowsToClipboard(rows: WordFrequencyResult[]): Promise<
   }
 }
 
-export function downloadCsv(rows: WordFrequencyResult[]): void {
-  const blob = new Blob([generateCsv(rows)], { type: "text/csv;charset=utf-8" });
+export function downloadCsv(summary: WordFrequencySummary): void {
+  const blob = new Blob([generateCsv(summary)], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
