@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+outputs/
+/广告诊断表_*.xlsx
+!assets/广告诊断表_空白模板.xlsx

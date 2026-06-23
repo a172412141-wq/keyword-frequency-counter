@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: ad-diagnostic-generator
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: bash start.sh
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
