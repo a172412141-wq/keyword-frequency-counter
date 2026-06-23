@@ -38,6 +38,31 @@ pip install -r requirements-dev.txt
 pytest -q
 ```
 
+## 发布到公网（Render 推荐）
+
+这个项目包含 Python 后端和文件生成逻辑，不能只用 GitHub Pages。推荐部署为 Render Web Service，成功后会得到一个类似 `https://ad-diagnostic-generator.onrender.com` 的公网链接，别人拿到链接即可上传 Bulk 并生成诊断表。
+
+仓库已包含 Render 部署配置：
+
+- 仓库根目录 `render.yaml`：给 Render Blueprint 读取，使用 `rootDir: ad-diagnostic-generator` 指向本工具目录。
+- 本目录 `render.yaml`：同样的 Web Service 配置，方便以后单独拆仓部署。
+- `.python-version`：指定 Python 3.12。
+- `start.sh`：读取 Render 注入的 `PORT` 并启动 FastAPI。
+
+发布步骤：
+
+1. 先把本项目推送到 GitHub，并合并到你准备用于上线的分支。
+2. 打开 [Render Dashboard](https://dashboard.render.com/)，选择 New → Blueprint。
+3. 连接 GitHub 仓库，选择包含 `render.yaml` 的仓库和分支。
+4. Render 会自动读取配置，创建 `ad-diagnostic-generator` Web Service。
+5. 等部署完成后，复制 Render 给出的 `*.onrender.com` 链接发给别人即可。
+
+免费版注意事项：
+
+- 免费 Web Service 闲置约 15 分钟会休眠，下一次访问可能需要约 1 分钟冷启动。
+- 文件只在内存中处理，不保存到数据库；服务重启后也不会保留上传文件。
+- 如果多人同时用或上传很大的 Bulk，建议升级到付费实例。
+
 ## 前端与 API
 
 - `frontend/index.html`：上传、选择父体、下载结果的完整交互页面。
