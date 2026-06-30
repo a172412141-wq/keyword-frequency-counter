@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fang 经营关系诊断模型"
+  short_description: "阶段管理、经营关系诊断与红线动作输出模型"
+  default_prompt: "Use $fang-business-diagnostic to diagnose this SKU, parent, product line, or platform project and recommend stage-specific actions."

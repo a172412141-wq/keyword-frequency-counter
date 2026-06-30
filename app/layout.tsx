@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "亚马逊关键词工具箱",
-  description: "统计英文关键词词频，自动识别词根并生成无冲突的组合关键词。",
+  title: "1SME 工具平台",
+  description: "统一管理 1SME Skill、Bulk 表分析、经营分析和亚马逊关键词工具。",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
