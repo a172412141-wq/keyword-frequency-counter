@@ -42,7 +42,10 @@ jobs:
         run: pnpm lint
 
       - name: Build static site
-        run: pnpm build
+        env:
+          NEXT_PUBLIC_DEPLOYMENT_MODE: public
+          NEXT_PUBLIC_REVIEW_API_BASE_URL: https://one-sme-amazon-review-analysis.a172412141.chatgpt.site
+        run: pnpm build:pages
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

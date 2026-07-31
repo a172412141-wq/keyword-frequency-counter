@@ -16,7 +16,13 @@
 
 # local files
 .DS_Store
+__pycache__/
 *.pem
+
+# independently versioned tools
+/amazon-review-public/
+/bulk-ad-diagnostic-generator/
+/business-analysis/
 
 # debug
 npm-debug.log*

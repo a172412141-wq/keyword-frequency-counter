@@ -4,13 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "next dev --hostname 127.0.0.1 --port 3000",
     "build": "next build",
+    "build:pages": "bash scripts/build_pages.sh",
     "start": "next start",
+    "start:local": "next start --hostname 127.0.0.1 --port 3000",
     "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {
+    "@types/pdfkit": "^0.17.6",
+    "docx": "^9.7.1",
+    "fontkit": "^2.0.4",
     "next": "16.2.9",
+    "pdfkit": "^0.19.1",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },

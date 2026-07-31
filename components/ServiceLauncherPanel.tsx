@@ -10,11 +10,22 @@ type LauncherService = {
   description: string;
   url: string;
   running: boolean;
+  managedPid?: number | null;
   missing: boolean;
   logPath: string;
 };
 
 const FALLBACK_SERVICES: LauncherService[] = [
+  {
+    id: "platform-web",
+    label: "平台前端",
+    description: "1SME 工具平台生产模式前端",
+    url: "http://127.0.0.1:3000/",
+    running: false,
+    managedPid: null,
+    missing: false,
+    logPath: ".launcher-logs/platform-web.log",
+  },
   {
     id: "bulk",
     label: "Bulk 表分析",
@@ -23,6 +34,15 @@ const FALLBACK_SERVICES: LauncherService[] = [
     running: false,
     missing: false,
     logPath: ".launcher-logs/bulk.log",
+  },
+  {
+    id: "title-optimizer",
+    label: "Listing优化",
+    description: "Amazon Listing 标题、五点和 A+ 合规优化 API",
+    url: "http://127.0.0.1:8010/docs",
+    running: false,
+    missing: false,
+    logPath: ".launcher-logs/title-optimizer.log",
   },
   {
     id: "business",
@@ -84,6 +104,26 @@ export function ServiceLauncherPanel() {
     }
   }
 
+  async function restartService(serviceId: string) {
+    setBusyId(serviceId);
+    setMessage("");
+    try {
+      const response = await fetch(`${LAUNCHER_URL}/api/services/${serviceId}/restart`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "重启失败");
+      await refresh();
+      setMessage("重启请求已发送。");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "重启失败";
+      setMessage(`无法重启：${detail}`);
+      setLauncherOnline(false);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function startAll() {
     setBusyId("all");
     setMessage("");
@@ -129,7 +169,7 @@ export function ServiceLauncherPanel() {
             </span>
           </div>
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            先启动这里的本地服务，再切到对应工具页上传文件分析。
+            平台前端和本地后端统一在这里启动、检查和重启。
           </p>
         </div>
         <button
@@ -178,6 +218,14 @@ export function ServiceLauncherPanel() {
                   className="min-h-9 rounded-lg bg-teal-600 px-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
                   {busyId === service.id ? "启动中" : service.running ? "已启动" : "启动"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => restartService(service.id)}
+                  disabled={!launcherOnline || busyId !== null || service.missing}
+                  className="min-h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-950 disabled:cursor-not-allowed disabled:text-slate-300"
+                >
+                  {busyId === service.id ? "处理中" : "重启"}
                 </button>
                 <a
                   href={service.url}

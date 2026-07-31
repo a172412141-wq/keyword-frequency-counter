@@ -1,0 +1,4 @@
+interface:
+  display_name: "Amazon 评论批量分析"
+  short_description: "批量采集并分析 Amazon 评论，输出 PDF、Word 与原始数据包"
+  default_prompt: "Use $amazon-review-analyzer to batch analyze these ASINs and generate one downloadable report package per ASIN."

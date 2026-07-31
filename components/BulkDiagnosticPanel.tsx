@@ -8,6 +8,8 @@ const HOSTED_BULK_URL =
 
 type BulkEndpoint = "local" | "hosted";
 
+const IS_PUBLIC_DEPLOYMENT = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === "public";
+
 const ENDPOINTS: Record<BulkEndpoint, { label: string; url: string; note: string }> = {
   local: {
     label: "本地服务",
@@ -22,7 +24,9 @@ const ENDPOINTS: Record<BulkEndpoint, { label: string; url: string; note: string
 };
 
 export function BulkDiagnosticPanel() {
-  const [endpoint, setEndpoint] = useState<BulkEndpoint>("local");
+  const [endpoint, setEndpoint] = useState<BulkEndpoint>(
+    IS_PUBLIC_DEPLOYMENT ? "hosted" : "local",
+  );
   const active = ENDPOINTS[endpoint];
 
   return (

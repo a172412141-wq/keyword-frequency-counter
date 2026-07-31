@@ -1,0 +1,4 @@
+interface:
+  display_name: "周会文档读取器"
+  short_description: "读取飞书周会文档并沉淀 Fang 经营规则"
+  default_prompt: "Use $fang-weekly-doc-reader to read a Feishu weekly-review document and extract reusable Fang operating learnings."

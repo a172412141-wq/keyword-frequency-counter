@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import signal
 import subprocess
 import time
 from dataclasses import dataclass
@@ -14,7 +16,7 @@ from urllib.request import Request, urlopen
 
 BASE_DIR = Path(__file__).resolve().parent
 LOG_DIR = BASE_DIR / ".launcher-logs"
-BUSINESS_ANALYZER_DIR = Path.home() / "Documents" / "New project" / "amazon-inventory-profit-analyzer"
+BUSINESS_ANALYZER_DIR = BASE_DIR / "business-analysis"
 
 
 @dataclass(frozen=True)
@@ -26,9 +28,20 @@ class Service:
     health_url: str
     cwd: Path
     command: tuple[str, ...]
+    startup_timeout: int = 12
 
 
 SERVICES: dict[str, Service] = {
+    "platform-web": Service(
+        id="platform-web",
+        label="平台前端",
+        description="1SME 工具平台生产模式前端",
+        url="http://127.0.0.1:3000/",
+        health_url="http://127.0.0.1:3000/",
+        cwd=BASE_DIR,
+        command=("./scripts/run_platform_web.sh",),
+        startup_timeout=45,
+    ),
     "bulk": Service(
         id="bulk",
         label="Bulk 表分析",
@@ -43,6 +56,22 @@ SERVICES: dict[str, Service] = {
             "127.0.0.1",
             "--port",
             "8000",
+        ),
+    ),
+    "title-optimizer": Service(
+        id="title-optimizer",
+        label="Listing优化",
+        description="Amazon Listing 标题、五点和 A+ 合规优化 API",
+        url="http://127.0.0.1:8010/docs",
+        health_url="http://127.0.0.1:8010/api/health",
+        cwd=BASE_DIR / "amazon-title-optimizer" / "backend",
+        command=(
+            "./.venv/bin/uvicorn",
+            "main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8010",
         ),
     ),
     "business": Service(
@@ -70,19 +99,21 @@ SERVICES: dict[str, Service] = {
 def service_running(service: Service) -> bool:
     try:
         req = Request(service.health_url, headers={"User-Agent": "1sme-platform-launcher"})
-        with urlopen(req, timeout=0.8) as response:
+        with urlopen(req, timeout=1.5) as response:
             return 200 <= response.status < 500
     except (OSError, URLError):
         return False
 
 
 def serialize_service(service: Service) -> dict[str, Any]:
+    pid = read_pid(service)
     return {
         "id": service.id,
         "label": service.label,
         "description": service.description,
         "url": service.url,
         "running": service_running(service),
+        "managedPid": pid if pid and process_running(pid) else None,
         "logPath": str(LOG_DIR / f"{service.id}.log"),
         "missing": not service.cwd.exists(),
     }
@@ -99,12 +130,14 @@ def start_service(service: Service) -> dict[str, Any]:
     if not executable.exists():
         raise FileNotFoundError(f"Service executable not found: {executable}")
 
+    stop_managed_process(service)
+
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_file = (LOG_DIR / f"{service.id}.log").open("ab")
     log_file.write(f"\n\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] starting {service.id}\n".encode())
     log_file.flush()
 
-    subprocess.Popen(
+    process = subprocess.Popen(
         service.command,
         cwd=service.cwd,
         stdout=log_file,
@@ -112,14 +145,85 @@ def start_service(service: Service) -> dict[str, Any]:
         stdin=subprocess.DEVNULL,
         start_new_session=True,
     )
+    write_pid(service, process.pid)
 
-    deadline = time.time() + 12
+    deadline = time.time() + service.startup_timeout
     while time.time() < deadline:
         if service_running(service):
             return {"started": True, "alreadyRunning": False, "service": serialize_service(service)}
+        if process.poll() is not None:
+            raise RuntimeError(
+                f"{service.label} exited before becoming healthy. Check {LOG_DIR / f'{service.id}.log'}"
+            )
         time.sleep(0.35)
 
     return {"started": True, "alreadyRunning": False, "service": serialize_service(service)}
+
+
+def stop_service(service: Service) -> dict[str, Any]:
+    stopped = stop_managed_process(service)
+    return {"stopped": stopped, "service": serialize_service(service)}
+
+
+def restart_service(service: Service) -> dict[str, Any]:
+    stop_managed_process(service)
+    result = start_service(service)
+    result["restarted"] = True
+    return result
+
+
+def pid_path(service: Service) -> Path:
+    return LOG_DIR / f"{service.id}.pid"
+
+
+def read_pid(service: Service) -> int | None:
+    try:
+        return int(pid_path(service).read_text().strip())
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def write_pid(service: Service, pid: int) -> None:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    pid_path(service).write_text(str(pid))
+
+
+def process_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def stop_managed_process(service: Service) -> bool:
+    pid = read_pid(service)
+    if not pid:
+        return False
+
+    if not process_running(pid):
+        pid_path(service).unlink(missing_ok=True)
+        return False
+
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError:
+        pid_path(service).unlink(missing_ok=True)
+        return False
+
+    deadline = time.time() + 6
+    while time.time() < deadline:
+        if not process_running(pid):
+            pid_path(service).unlink(missing_ok=True)
+            return True
+        time.sleep(0.2)
+
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except OSError:
+        pass
+    pid_path(service).unlink(missing_ok=True)
+    return True
 
 
 class LauncherHandler(BaseHTTPRequestHandler):
@@ -151,15 +255,21 @@ class LauncherHandler(BaseHTTPRequestHandler):
             return
 
         prefix = "/api/services/"
-        suffix = "/start"
-        if self.path.startswith(prefix) and self.path.endswith(suffix):
+        actions = {
+            "/start": start_service,
+            "/stop": stop_service,
+            "/restart": restart_service,
+        }
+        for suffix, action in actions.items():
+            if not (self.path.startswith(prefix) and self.path.endswith(suffix)):
+                continue
             service_id = self.path[len(prefix) : -len(suffix)]
             service = SERVICES.get(service_id)
             if not service:
                 self._send_json({"detail": "Unknown service"}, status=404)
                 return
             try:
-                self._send_json(start_service(service))
+                self._send_json(action(service))
             except Exception as exc:  # noqa: BLE001
                 self._send_json({"detail": str(exc), "service": serialize_service(service)}, status=500)
             return

@@ -60,6 +60,16 @@ export const SKILL_CATALOG: SkillCatalogItem[] = [
     pathHint: "bulk-ad-diagnostic-generator/skills/bulk-ad-diagnostic-generator",
   },
   {
+    name: "amazon-title-optimizer",
+    category: "amazon",
+    source: "workspace",
+    readiness: "hosted",
+    description: "Amazon Listing 文案合规检查与优化工具：识别标题长度、促销词、符号噪音、堆词、结构和夸张承诺风险，并给出五点和 A+ 版式建议。",
+    trigger: "帮我批量优化这些 Amazon Listing 文案",
+    requirement: "本地 FastAPI 服务；Excel 需要 Title 列，Brand、Category、Bullet1-5 和 APlusContent 可选。",
+    pathHint: "amazon-title-optimizer",
+  },
+  {
     name: "fang-business-diagnostic",
     category: "business",
     source: "workspace",
@@ -69,6 +79,17 @@ export const SKILL_CATALOG: SkillCatalogItem[] = [
     trigger: "用 Fang 经营关系诊断模型分析这个 SKU / 父体 / 品线",
     requirement: "需要尽量提供订单、真实贡献毛利、退货、库存覆盖、补货周期、现金流和供应链关系数据。",
     pathHint: "skills/fang-business-diagnostic",
+  },
+  {
+    name: "fang-weekly-doc-reader",
+    category: "business",
+    source: "workspace",
+    readiness: "hosted",
+    description:
+      "读取飞书 Fang/BBY 周会文档，自动提取阶段、KPI、红线、动作和可沉淀经营规则，并在本地归档。",
+    trigger: "用 fang-weekly-doc-reader 看这份飞书周会文档",
+    requirement: "需要本机 lark-cli 已配置飞书用户身份，并能访问目标周会文档。",
+    pathHint: "skills/fang-weekly-doc-reader",
   },
   {
     name: "huashu-nuwa",
