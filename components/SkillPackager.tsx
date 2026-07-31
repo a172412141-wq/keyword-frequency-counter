@@ -46,7 +46,6 @@ const CATEGORY_OPTIONS: Array<FilterValue<ToolSkillCategory>> = [
 
 const DEPLOY_OPTIONS: Array<FilterValue<ToolSkillDeployKind>> = [
   "all",
-  "fastapi",
   "next-fastapi",
   "streamlit",
   "next-panel",

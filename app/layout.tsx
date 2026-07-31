@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "1SME 工具平台",
-  description: "统一管理 1SME Skill、工具封装、Bulk 表、ASIN 评论、经营分析和亚马逊关键词工具。",
+  description: "统一管理 1SME Skill、工具封装、ASIN 评论、经营分析和亚马逊关键词工具。",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

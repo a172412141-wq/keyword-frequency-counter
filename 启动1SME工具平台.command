@@ -32,19 +32,6 @@ wait_for_url() {
   done
 }
 
-start_bulk_service() {
-  if check_url http://127.0.0.1:8000/api/health; then
-    return
-  fi
-
-  (
-    cd "$ROOT_DIR/bulk-ad-diagnostic-generator"
-    nohup ./.venv/bin/uvicorn api:app --host 127.0.0.1 --port 8000 \
-      >> "$ROOT_DIR/.launcher-logs/bulk.log" 2>&1 &
-    echo "$!" > "$ROOT_DIR/.launcher-logs/bulk.pid"
-  )
-}
-
 start_business_service() {
   if check_url http://127.0.0.1:8501/_stcore/health; then
     return
@@ -71,11 +58,9 @@ wait_for_url http://127.0.0.1:8787/api/health "本地启动器"
 curl -sS --fail --max-time 60 -X POST \
   http://127.0.0.1:8787/api/services/platform-web/start >/dev/null
 
-start_bulk_service
 start_business_service
 
 wait_for_url http://127.0.0.1:3000 "1SME 平台前端"
-wait_for_url http://127.0.0.1:8000/api/health "Bulk 表分析"
 wait_for_url http://127.0.0.1:8501/_stcore/health "经营分析"
 open http://127.0.0.1:3000 >/dev/null 2>&1 || true
 

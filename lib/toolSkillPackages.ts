@@ -1,7 +1,6 @@
 export type ToolSkillCategory = "amazon" | "business" | "keyword" | "system";
 
 export type ToolSkillDeployKind =
-  | "fastapi"
   | "next-fastapi"
   | "streamlit"
   | "next-panel"
@@ -51,7 +50,6 @@ export const TOOL_SKILL_CATEGORY_LABELS: Record<ToolSkillCategory, string> = {
 };
 
 export const TOOL_SKILL_DEPLOY_LABELS: Record<ToolSkillDeployKind, string> = {
-  fastapi: "FastAPI 本地服务",
   "next-fastapi": "Next + FastAPI",
   streamlit: "Streamlit 本地应用",
   "next-panel": "独立 Next 面板",
@@ -174,51 +172,6 @@ export const TOOL_SKILL_PACKAGES: ToolSkillPackage[] = [
       defaultPort: 3011,
       serverExternalPackages: ["fontkit", "pdfkit"],
     },
-  },
-  {
-    id: "bulk-ad-diagnostic-generator",
-    skillName: "bulk-ad-diagnostic-generator",
-    title: "Bulk 表分析",
-    category: "amazon",
-    deployKind: "fastapi",
-    deployLabel: TOOL_SKILL_DEPLOY_LABELS.fastapi,
-    description:
-      "Amazon Ads Bulk 本地分析工具，上传 Bulk .xlsx 后按 ASIN、SKU、Campaign、Ad Group 或 Portfolio 生成 8-sheet 广告诊断工作簿。",
-    trigger: "用 bulk-ad-diagnostic-generator 本地处理这份 Amazon Ads Bulk",
-    localUrl: "http://127.0.0.1:8000",
-    installTarget: "~/.codex/skills/bulk-ad-diagnostic-generator",
-    sourcePaths: ["bulk-ad-diagnostic-generator"],
-    privacy: "广告 Bulk 文件默认在本机 FastAPI 进程内处理，不上传私有广告数据。",
-    inputs: ["Amazon Ads Bulk .xlsx", "ASIN / SKU / Campaign / Ad Group / Portfolio 筛选值"],
-    outputs: ["广告诊断表 Excel", "带公式版或无公式静态值版"],
-    workflow: [
-      "读取并校验 Bulk 文件",
-      "选择一个筛选字段并勾选一个或多个值",
-      "生成 8-sheet 广告诊断工作簿",
-      "下载 Excel 后在 Excel/WPS 中继续分析",
-    ],
-    packageHighlights: ["完整 FastAPI 源码", "脱敏 Excel 模板", "Codex Skill 元数据", "本地安装、启动和验证脚本"],
-    installScript: `#!/usr/bin/env bash
-set -euo pipefail
-SKILL_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$SKILL_DIR/assets/source/bulk-ad-diagnostic-generator"
-python3 -m venv .venv
-./.venv/bin/pip install -r requirements.txt
-`,
-    runScript: `#!/usr/bin/env bash
-set -euo pipefail
-SKILL_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$SKILL_DIR/assets/source/bulk-ad-diagnostic-generator"
-PORT="\${PORT:-8000}"
-exec ./.venv/bin/uvicorn api:app --host 127.0.0.1 --port "$PORT"
-`,
-    verifyScript: `#!/usr/bin/env bash
-set -euo pipefail
-SKILL_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$SKILL_DIR/assets/source/bulk-ad-diagnostic-generator"
-./.venv/bin/python -m pytest -q
-node --check frontend/app.js
-`,
   },
   {
     id: "amazon-title-optimizer",

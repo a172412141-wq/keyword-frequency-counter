@@ -4,10 +4,8 @@
 
 - **Skill Hub**：集中浏览个人 Skill、系统 Skill 和平台工具入口。
 - **Skill 封装**：为平台工具生成同时支持 Windows 与 macOS 的 Codex Skill 一键安装 ZIP。
-- **Flynn1 Skill**：本地优先的 Bulk 表分析工作流，覆盖进度显示、高效率本地部署和隐私保护。
 - **Fang 经营关系诊断模型**：按经营阶段判断 SKU、父体、品线和新平台项目，输出红线检查与阶段化动作。
 - **周会经营快速诊断**：粘贴飞书 Fang/BBY 周会文档链接，自动读取并归档内容，按 Fang 阶段模型输出主矛盾、KPI 错位、经营关系、六类红线、立即动作和升级/止损条件。
-- **Bulk 表分析**：内嵌 Amazon Ads Bulk 诊断表生成器，支持本地服务和托管备用服务切换。
 - **Listing 文案合规优化**：支持单条和 Excel 批量处理标题、五点、A+，旁边展示新版标题准则、优化流程和老版 Listing 文案建议沉淀。
 - **ASIN 批量评论分析**：粘贴 Excel 单列或导入 CSV/TXT，逐个采集和分析书面评论，并为每个 ASIN 生成含 PDF、Word、CSV、JSON 的独立 ZIP 分析包。
 - **经营分析**：内嵌 Amazon 库存利润经营分析工具。
@@ -34,7 +32,7 @@ pnpm dev:local
 ./启动1SME工具平台.command
 ```
 
-本地启动器 API 默认运行在 `http://127.0.0.1:8787`，只建议本机使用。前端、Bulk、Listing 优化和经营分析服务都可以在平台里的“本地工具启动中心”统一启动、检查和重启。
+本地启动器 API 默认运行在 `http://127.0.0.1:8787`，只建议本机使用。前端、Listing 优化和经营分析服务可以在平台里的“本地工具启动中心”统一启动、检查和重启。
 
 ## 环境变量
 
@@ -43,7 +41,6 @@ NEXT_PUBLIC_ADMIN_EMAIL=your-email@example.com
 NEXT_PUBLIC_ADMIN_PASSWORD_SHA256=你的密码SHA256
 ADMIN_BASIC_USER=your-email@example.com
 ADMIN_BASIC_PASSWORD=强密码
-NEXT_PUBLIC_BULK_LOCAL_URL=http://127.0.0.1:8000/
 NEXT_PUBLIC_TITLE_OPTIMIZER_API_URL=http://127.0.0.1:8010
 NEXT_PUBLIC_BUSINESS_ANALYSIS_URL=http://127.0.0.1:8501/
 NEXT_PUBLIC_LAUNCHER_URL=http://127.0.0.1:8787
@@ -67,7 +64,7 @@ pnpm build
 
 ## 部署
 
-如果只部署静态关键词工具，Vercel / GitHub Pages 仍然可用。若要把 Bulk 表分析、经营分析和管理员页面一起公网化，优先使用 Cloudflare Tunnel + Cloudflare Access，避免免费容器冷启动，也能按你的邮箱限制 `/admin`。
+如果只部署静态工具，Vercel / GitHub Pages 可直接使用。若要把经营分析和管理员页面一起公网化，优先使用 Cloudflare Tunnel + Cloudflare Access，并按邮箱限制 `/admin`。
 
 ## 代码结构
 
@@ -89,12 +86,12 @@ pnpm build
 - `app/admin/page.tsx`：管理员页面
 - `proxy.ts`：可选的 `/admin` 服务端 Basic Auth
 - `platform_launcher.py`：本地工具启动器 API
-- `skills/Flynn1/SKILL.md`：本地优先 Bulk 表分析工作流 Skill
 - `skills/fang-business-diagnostic/SKILL.md`：Fang 经营关系诊断与阶段管理 Skill
 - `skills/fang-weekly-doc-reader/SKILL.md`：飞书周会文档读取与 Fang 周会沉淀 Skill
 - `skills/amazon-review-analyzer/SKILL.md`：Amazon 评论批量分析、报告输出和本地部署 Skill
 - `docs/local-deploy.md`：高效率本地部署说明
 - `docs/zero-cost-deploy.md`：0 成本公网部署建议
+- `docs/knowledge/amazon-ads-bulk-analysis-essence.md`：已下线 Bulk 工具留下的数据口径、诊断框架和工程经验
 
 如需修改标点清理规则，请调整 `lib/wordFrequency.ts` 中的 `PUNCTUATION_REGEX`。
 

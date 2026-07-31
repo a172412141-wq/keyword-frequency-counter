@@ -289,10 +289,6 @@ function renderWindowsSkillScripts(toolPackage: ToolSkillPackage): WindowsSkillS
     return renderNextPanelWindowsScripts(toolPackage.standaloneApp?.defaultPort ?? 3000);
   }
 
-  if (toolPackage.deployKind === "fastapi") {
-    return renderFastApiWindowsScripts("bulk-ad-diagnostic-generator", "api:app", 8000);
-  }
-
   if (toolPackage.deployKind === "streamlit") {
     return renderStreamlitWindowsScripts("business-analysis", "app.py", 8501);
   }

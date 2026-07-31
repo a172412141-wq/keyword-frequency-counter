@@ -2,20 +2,19 @@
 
 推荐方案：Cloudflare Tunnel + Cloudflare Access。
 
-这个方案不需要买云服务器，也不需要把文件处理逻辑迁到第三方平台。Next 平台、Bulk 表分析、经营分析继续跑在你的 Mac 或一台已有机器上，Cloudflare Tunnel 负责把公网域名安全转发到本机端口，Cloudflare Access 负责按邮箱放行。
+这个方案不需要买云服务器，也不需要把文件处理逻辑迁到第三方平台。Next 平台、Listing 优化和经营分析继续跑在你的 Mac 或一台已有机器上，Cloudflare Tunnel 负责把公网域名安全转发到本机端口，Cloudflare Access 负责按邮箱放行。
 
 ## 推荐域名结构
 
 | 域名 | 转发到 | 用途 |
 | --- | --- | --- |
 | `tools.example.com` | `http://127.0.0.1:3000` | 统一工具平台 |
-| `bulk.example.com` | `http://127.0.0.1:8000` | Bulk 表分析 FastAPI |
+| `listing.example.com` | `http://127.0.0.1:8010` | Listing 优化 FastAPI |
 | `business.example.com` | `http://127.0.0.1:8501` | 经营分析 Streamlit |
 
 公网部署时，把平台环境变量改成这些域名：
 
 ```bash
-NEXT_PUBLIC_BULK_LOCAL_URL=https://bulk.example.com/
 NEXT_PUBLIC_BUSINESS_ANALYSIS_URL=https://business.example.com/
 NEXT_PUBLIC_LAUNCHER_URL=http://127.0.0.1:8787
 ```

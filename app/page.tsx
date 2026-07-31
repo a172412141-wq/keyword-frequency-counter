@@ -4,7 +4,6 @@ import { useState } from "react";
 import { AmazonTitleOptimizerPanel } from "@/components/AmazonTitleOptimizerPanel";
 import { AmazonReviewBatchPanel } from "@/components/AmazonReviewBatchPanel";
 import { AsinCompetitorAnalyzerPanel } from "@/components/AsinCompetitorAnalyzerPanel";
-import { BulkDiagnosticPanel } from "@/components/BulkDiagnosticPanel";
 import { BusinessAnalysisPanel } from "@/components/BusinessAnalysisPanel";
 import { FrequencyTool } from "@/components/FrequencyTool";
 import { KeywordCombiner } from "@/components/KeywordCombiner";
@@ -18,7 +17,6 @@ const PUBLIC_REVIEW_SITE = "https://one-sme-amazon-review-analysis.a172412141.ch
 type ActiveSection =
   | "skills"
   | "packager"
-  | "bulk"
   | "title"
   | "reviews"
   | "competitor"
@@ -37,11 +35,6 @@ const TOOL_COPY = {
     eyebrow: "LOCAL SKILL PACKAGER",
     title: "Skill 封装中心",
     description: "把每个工具整理成可下载的 Codex Skill 包，内置源码、元数据、本地部署说明和启动脚本。",
-  },
-  bulk: {
-    eyebrow: "BULK AD DIAGNOSTICS",
-    title: "Bulk 表分析",
-    description: "上传 Amazon Ads Bulk，筛选 ASIN、SKU、Campaign 或 Portfolio，生成广告诊断工作簿。",
   },
   title: {
     eyebrow: "AMAZON LISTING OPTIMIZER",
@@ -92,7 +85,7 @@ export default function Home() {
             <div>
               <div className="font-bold">公网版已连接在线服务</div>
               <p className="mt-1 leading-6 text-teal-800">
-                评论分析、Bulk 托管版、竞对分析和关键词工具可直接使用；涉及本机文件、飞书授权或本地服务的模块会明确标注。
+                评论分析、竞对分析和关键词工具可直接使用；涉及本机文件、飞书授权或本地服务的模块会明确标注。
               </p>
             </div>
             <a
@@ -121,12 +114,6 @@ export default function Home() {
             onClick={() => setActiveSection("packager")}
           >
             Skill封装
-          </ToolButton>
-          <ToolButton
-            active={activeSection === "bulk"}
-            onClick={() => setActiveSection("bulk")}
-          >
-            Bulk表分析
           </ToolButton>
           <ToolButton
             active={activeSection === "title"}
@@ -199,7 +186,6 @@ export default function Home() {
             <SkillPackager />
           )
         ) : null}
-        {activeSection === "bulk" ? <BulkDiagnosticPanel /> : null}
         {activeSection === "title" ? (
           IS_PUBLIC_DEPLOYMENT ? (
             <LocalOnlyNotice module="Listing 文案合规优化" reason="需要本机优化服务处理 Excel 和文案" />

@@ -40,26 +40,6 @@ export const READINESS_LABELS: Record<SkillReadiness, string> = {
 
 export const SKILL_CATALOG: SkillCatalogItem[] = [
   {
-    name: "Flynn1",
-    category: "amazon",
-    source: "workspace",
-    readiness: "ready",
-    description: "1SME 本地优先 Bulk 表分析工作流：进度显示、高效率本地部署、隐私优先生成诊断表。",
-    trigger: "用 Flynn1 本地处理这份 Bulk 表",
-    requirement: "本地 Next 平台、启动器和 Bulk FastAPI 服务；默认不上传私有广告数据。",
-    pathHint: "skills/Flynn1",
-  },
-  {
-    name: "bulk-ad-diagnostic-generator",
-    category: "amazon",
-    source: "workspace",
-    readiness: "hosted",
-    description: "Amazon Ads Bulk 上传、筛选 ASIN/SKU/Campaign 后生成 8-sheet 广告诊断工作簿。",
-    trigger: "帮我用 bulk-ad-diagnostic-generator 处理这份 Bulk",
-    requirement: "本地 FastAPI 或 Render 托管服务；涉及广告数据时优先本地处理。",
-    pathHint: "bulk-ad-diagnostic-generator/skills/bulk-ad-diagnostic-generator",
-  },
-  {
     name: "amazon-title-optimizer",
     category: "amazon",
     source: "workspace",

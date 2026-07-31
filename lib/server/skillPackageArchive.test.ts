@@ -25,7 +25,6 @@ function readStoredZipEntries(data: Buffer) {
 describe("skill package archives", () => {
   it.each([
     ["amazon-review-analyzer", "pnpm dev"],
-    ["bulk-ad-diagnostic-generator", "uvicorn api:app"],
     ["amazon-title-optimizer", "Start-Process"],
     ["fang-business-analysis", "streamlit run"],
     ["keyword-frequency-counter", "pnpm dev"],

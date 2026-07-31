@@ -42,22 +42,6 @@ SERVICES: dict[str, Service] = {
         command=("./scripts/run_platform_web.sh",),
         startup_timeout=45,
     ),
-    "bulk": Service(
-        id="bulk",
-        label="Bulk 表分析",
-        description="Amazon Ads Bulk 诊断表生成器",
-        url="http://127.0.0.1:8000/",
-        health_url="http://127.0.0.1:8000/api/health",
-        cwd=BASE_DIR / "bulk-ad-diagnostic-generator",
-        command=(
-            "./.venv/bin/uvicorn",
-            "api:app",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8000",
-        ),
-    ),
     "title-optimizer": Service(
         id="title-optimizer",
         label="Listing优化",

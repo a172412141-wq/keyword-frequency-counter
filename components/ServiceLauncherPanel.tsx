@@ -27,15 +27,6 @@ const FALLBACK_SERVICES: LauncherService[] = [
     logPath: ".launcher-logs/platform-web.log",
   },
   {
-    id: "bulk",
-    label: "Bulk 表分析",
-    description: "Amazon Ads Bulk 诊断表生成器",
-    url: "http://127.0.0.1:8000/",
-    running: false,
-    missing: false,
-    logPath: ".launcher-logs/bulk.log",
-  },
-  {
     id: "title-optimizer",
     label: "Listing优化",
     description: "Amazon Listing 标题、五点和 A+ 合规优化 API",

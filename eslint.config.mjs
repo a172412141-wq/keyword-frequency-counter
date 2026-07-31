@@ -19,7 +19,5 @@ export default defineConfig([
     "**/node_modules/**",
     ".pnpm-store/**",
     "amazon-review-public/**",
-    "ad-diagnostic-generator/frontend/**",
-    "bulk-ad-diagnostic-generator/frontend/**",
   ]),
 ]);
