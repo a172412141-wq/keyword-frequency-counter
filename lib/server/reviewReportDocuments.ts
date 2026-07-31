@@ -57,6 +57,7 @@ const WINDOWS_FONT_ROOT = process.env.WINDIR
 type ReportFontCandidate = { path: string; postscriptName?: string };
 
 const PDF_FONT_CANDIDATES: ReportFontCandidate[] = [
+  { path: join(process.cwd(), "lib/server/assets/report-font.ttf") },
   { path: "/System/Library/Fonts/Supplemental/Arial Unicode.ttf" },
   { path: "/Library/Fonts/Arial Unicode.ttf" },
   ...(WINDOWS_FONT_ROOT

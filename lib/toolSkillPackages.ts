@@ -123,6 +123,7 @@ export const TOOL_SKILL_PACKAGES: ToolSkillPackage[] = [
       "lib/reviewBatch.ts",
       "lib/server/amazonReviewAnalyzer.ts",
       "lib/server/reviewReportDocuments.ts",
+      "lib/server/assets/report-font.ttf",
       "lib/server/zipArchive.ts",
       "app/api/review-analysis",
       "types/fontkit.d.ts",
