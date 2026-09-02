@@ -2,7 +2,7 @@
 
 一个把常用 1SME 工具和 Codex Skill 入口放到同一平台的本地工具站，当前包含：
 
-- **Skill Hub**：集中浏览个人 Skill、系统 Skill 和平台工具入口。
+- **Skill Hub**：自动扫描、校验并集中发布当前项目、个人技能库和系统 Skill，按名称去重后生成公网目录快照。
 - **Skill 封装**：为平台工具生成同时支持 Windows 与 macOS 的 Codex Skill 一键安装 ZIP。
 - **Fang 经营关系诊断模型**：按经营阶段判断 SKU、父体、品线和新平台项目，输出红线检查与阶段化动作。
 - **周会经营快速诊断**：粘贴飞书 Fang/BBY 周会文档链接，自动读取并归档内容，按 Fang 阶段模型输出主矛盾、KPI 错位、经营关系、六类红线、立即动作和升级/止损条件。
@@ -62,6 +62,18 @@ pnpm lint
 pnpm build
 ```
 
+## Skill 默认发布
+
+平台会扫描以下位置的 `SKILL.md`：
+
+- 当前项目的 `skills/`
+- `~/.codex/skills/`（包含系统 Skill）
+- `~/.agents/skills/`
+
+同名 Skill 按“当前项目 → 个人 Codex 技能库 → Agents 技能库 → 系统技能”的顺序保留一份。默认发布名称、简介、来源、依赖、结构校验结果和调用口令；不会发布 Skill 正文、脚本、附件、凭证或本地数据。
+
+新增或更新 Skill 后，运行 `pnpm sync:skills` 即可刷新目录；本地生产构建和公网发布构建也会自动同步。若某个 Skill 不应公开，可把它的名称加入 `config/skill-publish.json` 的 `exclude` 数组。
+
 ## 部署
 
 如果只部署静态工具，Vercel / GitHub Pages 可直接使用。若要把经营分析和管理员页面一起公网化，优先使用 Cloudflare Tunnel + Cloudflare Access，并按邮箱限制 `/admin`。
@@ -77,6 +89,9 @@ pnpm build
 - `lib/conflictRules.ts`：同义、尺寸、颜色、材质和场景冲突检查
 - `lib/combinationGenerator.ts`：受控组合、去重、排序和数量保护
 - `components/`：平台模块、关键词工具、内嵌服务和管理员组件
+- `scripts/sync_skill_catalog.mjs`：扫描、校验、去重并生成可公开的 Skill 目录快照
+- `data/skill-catalog.generated.json`：公开 Skill 元数据快照，不含 Skill 正文与本地敏感内容
+- `config/skill-publish.json`：默认发布的排除清单
 - `components/AmazonReviewBatchPanel.tsx`：ASIN 批量导入、任务队列和独立分析包下载
 - `lib/server/amazonReviewAnalyzer.ts`：评论采集、去重、主题分析和报告生成
 - `lib/server/reviewReportDocuments.ts`：PDF 与 Word 商务简报生成器
